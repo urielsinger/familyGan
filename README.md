@@ -8,3 +8,6 @@ some references:
 Datasets:
 - [Fiwkinship](https://web.northeastern.edu/smilelab/fiwkinship)
 - [TSKinFace](http://parnec.nuaa.edu.cn/xtan/data/TSKinFace.html)
+
+Code:
+- [stylegan-encoder](https://github.com/spiorf/stylegan-encoder)
