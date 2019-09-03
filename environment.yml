@@ -1,0 +1,35 @@
+name: familyGan
+channels:
+- h2oai
+- conda-forge
+- defaults
+
+dependencies:
+# Core scientific python
+- numpy
+- matplotlib
+- python>=3.6
+- seaborn
+- pip
+- scikit-learn
+- scikit-image
+- h2o  # install via conda install -c h2oai h2o
+
+# Deep Learning
+- cudatoolkit
+
+# Jupyter Environment
+- autopep8
+- notebook
+- ipython
+- jupyter_contrib_nbextensions
+- jupyterlab
+- jupyter
+- nb_conda
+
+- pip:
+    - nbclean
+    - imageio
+    - tqdm
+    - tb-nightly  # for tensorboard
+    - tensorflow-gpu
