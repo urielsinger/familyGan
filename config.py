@@ -77,3 +77,8 @@ all_directions = np.stack([gender_direction,
 MALE, FEMALE = 'm', 'f'
 GENDERS = [MALE, FEMALE]
 # FILE_FORMAT is $$$_N_N.png
+
+
+aligned_path = f'{DATA_DIR_PATH}/aligned_images/'
+generated_path = f'{DATA_DIR_PATH}/generated_images/'
+latent_path = f'{DATA_DIR_PATH}/latent_representations/'
