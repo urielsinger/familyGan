@@ -7,7 +7,8 @@ some references:
 - [image2styletransfare GAN](https://arxiv.org/abs/1904.03189)
 
 Datasets:
-- [Fiwkinship](https://web.northeastern.edu/smilelab/fiwkinship)
+- [Fiwkinship](https://web.northeastern.edu/smilelab/fiwkinship) - try downloading from this [link](https://www.google.com/url?q=https://1drv.ms/u/s!AkDk_XdBkJ9whlQQkd2rOXSREro-&sa=D&ust=1567577791511000&usg=AFQjCNFUuKCPHpFajsnMWXgNKNq2eHVo4A). I didn't manage to download it.
+  - tyr also [here](https://docs.google.com/forms/d/e/1FAIpQLSd5_hbg-7QlrqE9V4MJShgww308yCxHlj6VOLctETX6aYLQgg/formResponse)
 - [TSKinFace](http://parnec.nuaa.edu.cn/xtan/data/TSKinFace.html)
 
 Code:
