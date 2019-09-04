@@ -105,16 +105,13 @@ class dataHandler:
 
     def image2latent(self):
         script_path = f'{FAMILYGAN_DIR_PATH}/familyGan/stylegan-encoder/encode_images.py'
-        aligned_path = f'{self.path}/aligned_images/'
-        generated_path = f'{self.path}/generated_images/'
-        latent_path = f'{self.path}/latent_representations/'
 
-        if not os.path.exists(generated_path):
-            os.makedirs(generated_path)
-        if not os.path.exists(latent_path):
-            os.makedirs(latent_path)
+        if not os.path.exists(config.generated_path):
+            os.makedirs(config.generated_path)
+        if not os.path.exists(config.latent_path):
+            os.makedirs(config.latent_path)
 
-        os.system(f"{script_path} {aligned_path} {generated_path} {latent_path}")
+        os.system(f"{script_path} {config.aligned_path} {config.generated_path} {config.latent_path}")
 
     def latent2image(self, latent_vector):
         latent_vector = latent_vector.reshape((1, 18, 512))
