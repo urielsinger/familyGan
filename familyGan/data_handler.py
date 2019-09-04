@@ -53,7 +53,7 @@ class dataHandler:
             os.makedirs(output_path)
 
         for _, sample in df.iterrows():
-            image_path = os.path.join(output_path, sample['path'])
+            image_path = os.path.join(source_path, sample['path'])
             image_name = sample['path'][sample['path'].find('/') + 1:sample['path'].find('.')] + '-' + sample[
                 'character'] + '.png'
             image = Image.open(image_path)
