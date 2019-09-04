@@ -14,9 +14,9 @@ URL_FFHQ = 'https://drive.google.com/uc?id=1MEGjdvVpUsu1jB4zrXZN7Y4kBBOzizDQ'
 synthesis_kwargs = dict(output_transform=dict(func=tflib.convert_images_to_uint8, nchw_to_nhwc=True), minibatch_size=8)
 
 tflib.init_tf()
-with dnnlib.util.open_url(URL_FFHQ, cache_dir=config.cache_dir) as f:
-    generator_network, discriminator_network, Gs_network = pickle.load(f)
-generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
+# with dnnlib.util.open_url(URL_FFHQ, cache_dir=config.cache_dir) as f:
+#     generator_network, discriminator_network, Gs_network = pickle.load(f)
+# generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
 
 direction_path = os.path.join(FAMILYGAN_DIR_PATH, 'familyGan', 'stylegan_encoder', 'trained_directions')
 gender_direction = np.load(f'{direction_path}/gender_direction.npy')
