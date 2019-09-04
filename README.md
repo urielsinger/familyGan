@@ -13,3 +13,7 @@ Datasets:
 
 Code:
 - [stylegan-encoder](https://github.com/spiorf/stylegan-encoder)
+- [Basic SR](https://github.com/xinntao/BasicSR)
+- [ESRGAN SR](https://paperswithcode.com/paper/esrgan-enhanced-super-resolution-generative#code)
+- [image SR PWC](https://paperswithcode.com/sota/image-super-resolution-on-set5-4x-upscaling)
+- [Xiaomi FALSR](https://github.com/xiaomi-automl/FALSR)
