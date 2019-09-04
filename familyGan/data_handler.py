@@ -12,10 +12,10 @@ from config import FAMILYGAN_DIR_PATH
 
 class dataHandler:
     def __init__(self):
-        self.path = f'{FAMILYGAN_DIR_PATH}/data/TSKinFace_Data/'
+        self.path = f'{FAMILYGAN_DIR_PATH}/../data/TSKinFace_Data/'
 
     def create_all_faces_dir(self, output_name):
-        output_path = join(f'{FAMILYGAN_DIR_PATH}/data/TSKinFace_Data', output_name)
+        output_path = join(f'{FAMILYGAN_DIR_PATH}/../data/TSKinFace_Data', output_name)
         for folder in os.listdir(join(self.path, 'TSKinFace_cropped')):
             cur_data_path = join(self.path, folder)
             for image_name in os.listdir(cur_data_path):
@@ -93,8 +93,8 @@ class dataHandler:
 
     def align_images(self):
         script_path = f'{FAMILYGAN_DIR_PATH}/familyGan/stylegan-encoder/align_images.py'
-        aligned_path = f'{FAMILYGAN_DIR_PATH}/data/TSKinFace_Data/aligned_images/'
-        faces_path = f'{FAMILYGAN_DIR_PATH}/data/TSKinFace_Data/all_faces/'
+        aligned_path = f'{FAMILYGAN_DIR_PATH}/../data/TSKinFace_Data/aligned_images/'
+        faces_path = f'{FAMILYGAN_DIR_PATH}/../data/TSKinFace_Data/all_faces/'
 
         if not os.path.exists(aligned_path):
             os.makedirs(aligned_path)
@@ -105,9 +105,9 @@ class dataHandler:
 
     def image2latent(self):
         script_path = f'{FAMILYGAN_DIR_PATH}/familyGan/stylegan-encoder/encode_images.py'
-        aligned_path = f'{FAMILYGAN_DIR_PATH}/data/TSKinFace_Data/aligned_images/'
-        generated_path = f'{FAMILYGAN_DIR_PATH}/data/TSKinFace_Data/generated_images/'
-        latent_path = f'{FAMILYGAN_DIR_PATH}/data/TSKinFace_Data/latent_representations/'
+        aligned_path = f'{FAMILYGAN_DIR_PATH}/../data/TSKinFace_Data/aligned_images/'
+        generated_path = f'{FAMILYGAN_DIR_PATH}/../data/TSKinFace_Data/generated_images/'
+        latent_path = f'{FAMILYGAN_DIR_PATH}/../data/TSKinFace_Data/latent_representations/'
 
         if not os.path.exists(generated_path):
             os.makedirs(generated_path)
