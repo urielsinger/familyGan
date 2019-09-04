@@ -5,6 +5,10 @@ from familyGan.stylegan_encoder import dnnlib
 import familyGan.stylegan_encoder.dnnlib.tflib as tflib
 from familyGan.stylegan_encoder import config
 from familyGan.stylegan_encoder.encoder.generator_model import Generator
+import sys
+
+sys.modules['dnnlib'] = dnnlib
+sys.modules['tflib'] = tflib
 
 FAMILYGAN_DIR_PATH = os.path.dirname(__file__)
 DATA_DIR_PATH = f'{FAMILYGAN_DIR_PATH}/../familyGan_data/TSKinFace_Data/'
@@ -43,6 +47,32 @@ beard_direction = np.load(f'{direction_path}/beard_direction.npy')
 facialhair_direction = np.load(f'{direction_path}/facialhair_direction.npy')
 moustache_direction = np.load(f'{direction_path}/moustache_direction.npy')
 sideburns_direction = np.load(f'{direction_path}/sideburns_direction.npy')
+
+all_directions = np.stack([gender_direction,
+                                 gender_direction,
+                                 headPose_yaw_direction,
+                                 headPose_roll_direction,
+                                 # headPose_pitch_directio
+                                 age_kid_direction,
+                                 age_middle_direction,
+                                 age_young_direction,
+                                 age_old_direction,
+                                 glasses_direction,
+                                 smile_direction,
+                                 anger_direction,
+                                 sadness_direction,
+                                 contempt_direction,
+                                 disgust_direction,
+                                 fear_direction,
+                                 happiness_direction,
+                                 neutral_direction,
+                                 surprise_direction,
+                                 eyeMakeup_direction,
+                                 lipMakeup_direction,
+                                 beard_direction,
+                                 facialhair_direction,
+                                 moustache_direction,
+                                 sideburns_direction])
 
 MALE, FEMALE = 'm', 'f'
 GENDERS = [MALE, FEMALE]
