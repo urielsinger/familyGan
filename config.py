@@ -43,3 +43,7 @@ beard_direction = np.load(f'{direction_path}/beard_direction.npy')
 facialhair_direction = np.load(f'{direction_path}/facialhair_direction.npy')
 moustache_direction = np.load(f'{direction_path}/moustache_direction.npy')
 sideburns_direction = np.load(f'{direction_path}/sideburns_direction.npy')
+
+MALE, FEMALE = 'm', 'f'
+GENDERS = [MALE, FEMALE]
+# FILE_FORMAT is $$$_N_N.png

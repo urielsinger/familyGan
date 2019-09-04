@@ -4,7 +4,8 @@ import config
 
 
 class SimpleRegressor(BasicFamilyReg):
-    def __init__(self, direction=config.age_kid_direction, coef=1):
+    def __init__(self, direction=config.age_kid_direction, coef=1, **kwargs):
+        super().__init__(**kwargs)
         self.direction = direction
         self.coef = coef
 
