@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pickle
 from familyGan.stylegan_encoder import dnnlib
+from familyGan import faceSuperResolution
 import familyGan.stylegan_encoder.dnnlib.tflib as tflib
 from familyGan.stylegan_encoder import config
 from familyGan.stylegan_encoder.encoder.generator_model import Generator
@@ -9,6 +10,8 @@ import sys
 
 sys.modules['dnnlib'] = dnnlib
 sys.modules['tflib'] = tflib
+sys.modules['faceSuperResolution'] = faceSuperResolution
+
 
 FAMILYGAN_DIR_PATH = os.path.dirname(__file__)
 DATA_DIR_PATH = f'{FAMILYGAN_DIR_PATH}/../../familyGan_data/TSKinFace_Data/'
