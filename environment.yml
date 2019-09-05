@@ -18,6 +18,10 @@ dependencies:
 # Deep Learning
 - cudatoolkit
 
+# Visualizations
+- bokeh
+- holoviews
+
 # Jupyter Environment
 - autopep8
 - notebook

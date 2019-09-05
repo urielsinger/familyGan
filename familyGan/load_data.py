@@ -6,7 +6,9 @@ from typing import List
 
 import PIL
 import numpy as np
-from tqdm import tqdm
+
+import config
+from auto_tqdm import tqdm
 
 
 def get_files_from_path(pathstring) -> List[str]:
@@ -21,7 +23,7 @@ def get_files_from_path(pathstring) -> List[str]:
     """
 
     pkl_paths = []
-    for file in Path(pathstring).glob("**/*.pkl"):
+    for file in Path(pathstring).glob("**/*.npy"):
         pkl_paths.append(str(file))
 
     return pkl_paths
@@ -32,11 +34,14 @@ def load_aligned_image_latent(fname_no_type, aligned_path, latent_path):
     return img, latent_f
 
 
-def merge_stylegan_outputs_to_triplet_pickles(aligned_path, generated_path, latent_path):
+def merge_stylegan_outputs_to_triplet_pickles(aligned_path=config.aligned_path, generated_path=config.generated_path,
+                                              latent_path=config.latent_path):
+    print("starting merge from folders")
     for filep in tqdm(get_files_from_path(latent_path)):
         fname = os.path.basename(filep)
 
         fname_no_type = fname[:-4]
+        print(fname_no_type)
         family_con, ex_num, end = fname_no_type.split('-')
         child_type, child_num = end.split('_')
         
@@ -50,10 +55,11 @@ def merge_stylegan_outputs_to_triplet_pickles(aligned_path, generated_path, late
         
         mother_fname_no_type = f"{family_con}-{ex_num}-M_{child_num}"
         mother_img, mother_latent_f = load_aligned_image_latent(mother_fname_no_type, aligned_path, latent_path)
-        
+
         triplet_pkl_fname = f"{family_con}-{ex_num}-{child_num}.pkl"
-        with open(triplet_pkl_fname, 'wb') as f:
-            pkl.dump(((father_img, father_latent_f), (mother_img, mother_latent_f), (child_img, child_latent_f)), f)    
+        with open(f"{config.pkls_path}/{triplet_pkl_fname}", 'wb') as f:
+            pkl.dump(((father_img, father_latent_f), (mother_img, mother_latent_f), (child_img, child_latent_f)), f)
+    print("done merge from folders")
 
 def load_data_for_training(folder_path, gender_filter=None) -> (np.array, np.array, np.array):
     print("Starting saved data loading")

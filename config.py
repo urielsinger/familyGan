@@ -11,16 +11,16 @@ sys.modules['dnnlib'] = dnnlib
 sys.modules['tflib'] = tflib
 
 FAMILYGAN_DIR_PATH = os.path.dirname(__file__)
-DATA_DIR_PATH = f'{FAMILYGAN_DIR_PATH}/../familyGan_data/TSKinFace_Data/'
+DATA_DIR_PATH = f'{os.path.dirname(os.path.dirname(FAMILYGAN_DIR_PATH))}/familyGan_data/TSKinFace_Data'
 
 URL_FFHQ = 'https://drive.google.com/uc?id=1MEGjdvVpUsu1jB4zrXZN7Y4kBBOzizDQ'
 
 synthesis_kwargs = dict(output_transform=dict(func=tflib.convert_images_to_uint8, nchw_to_nhwc=True), minibatch_size=8)
 
-tflib.init_tf()
-with dnnlib.util.open_url(URL_FFHQ, cache_dir=config.cache_dir) as f:
-    generator_network, discriminator_network, Gs_network = pickle.load(f)
-generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
+# tflib.init_tf()
+# with dnnlib.util.open_url(URL_FFHQ, cache_dir=config.cache_dir) as f:
+#     generator_network, discriminator_network, Gs_network = pickle.load(f)
+# generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
 
 direction_path = os.path.join(FAMILYGAN_DIR_PATH, 'familyGan', 'stylegan_encoder', 'trained_directions')
 gender_direction = np.load(f'{direction_path}/gender_direction.npy')
@@ -82,3 +82,4 @@ GENDERS = [MALE, FEMALE]
 aligned_path = f'{DATA_DIR_PATH}/aligned_images/'
 generated_path = f'{DATA_DIR_PATH}/generated_images/'
 latent_path = f'{DATA_DIR_PATH}/latent_representations/'
+pkls_path = f'{DATA_DIR_PATH}/pkl_files/'
