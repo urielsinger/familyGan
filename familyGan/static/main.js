@@ -1,5 +1,6 @@
 $( document ).ready(function() {
     console.log( "ready!" );
+
     function readURL(input, boxName) {
         if (input.files && input.files[0]) {
             var reader = new FileReader();
@@ -9,6 +10,8 @@ $( document ).ready(function() {
             reader.readAsDataURL(input.files[0]);
         }
     }
+
+    $(".overlay").css("display","none");
 
     if(window.location.href.split("/").length < 4 && window.location.href.split("/")[3]){
         $('#imagePreview').attr('src', "upload_files/"+window.location.href.split("/")[3]);
@@ -26,6 +29,7 @@ $( document ).ready(function() {
           data.append('image1',$("#imageUpload1")[0].files[0])
           data.append('image2',$("#imageUpload2")[0].files[0])
 
+          $(".overlay").css("display","block");
           $.ajax({
               url:"/upload",
               type:'POST',
