@@ -11,7 +11,7 @@ sys.modules['dnnlib'] = dnnlib
 sys.modules['tflib'] = tflib
 
 FAMILYGAN_DIR_PATH = os.path.dirname(__file__)
-DATA_DIR_PATH = f'{FAMILYGAN_DIR_PATH}/../familyGan_data/TSKinFace_Data/'
+DATA_DIR_PATH = f'{os.path.dirname(os.path.dirname(FAMILYGAN_DIR_PATH))}/familyGan_data/TSKinFace_Data'
 
 URL_FFHQ = 'https://drive.google.com/uc?id=1MEGjdvVpUsu1jB4zrXZN7Y4kBBOzizDQ'
 
@@ -82,3 +82,4 @@ GENDERS = [MALE, FEMALE]
 aligned_path = f'{DATA_DIR_PATH}/aligned_images/'
 generated_path = f'{DATA_DIR_PATH}/generated_images/'
 latent_path = f'{DATA_DIR_PATH}/latent_representations/'
+pkls_path = f'{DATA_DIR_PATH}/pkl_files/'
