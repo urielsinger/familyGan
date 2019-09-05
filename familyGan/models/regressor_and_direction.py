@@ -41,9 +41,7 @@ class RegressorAndDirection(BasicFamilyReg):
         with torch.no_grad():
             y_pred = self.model(X_fathers, X_mothers)
         y_pred = y_pred + self.coef * self.direction
-        gender_coef = random.choice([-2, 2])
-        y_pred = y_pred + gender_coef * config.gender_direction
-        return y_pred
+        return self.add_random_gender(y_pred)
 
 
 class ChildNet(nn.Module):
