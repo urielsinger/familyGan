@@ -90,7 +90,7 @@ def load_data_for_training(pkl_folder_path, gender_filter=None) -> (np.array, np
 def load_data_for_deploy(folder_path, gender_filter=None) -> (np.array, np.array):
     print("Starting saved data loading")
 
-    X_fathers_list, X_mothers_list = [], [], []
+    X_fathers_list, X_mothers_list = [], []
     X_fathers, X_mothers = None, None
 
     for filep in tqdm(get_files_from_path(folder_path)):
@@ -112,15 +112,18 @@ def load_data_for_deploy(folder_path, gender_filter=None) -> (np.array, np.array
 def load_false_triplets(X_fathers, X_mothers, y_child, example_amount) -> (np.array, np.array, np.array):
     """
     Expects output from load_data_for_training
+
+    returns new children for existing fathers,mothers (in the same order)
     """
     y_child_perm_list = []
     ex_num = y_child.shape[0]
+    assert example_amount <= ex_num, "load_false expect a smaller number than the number of triplets"
     for i in range(example_amount):
         new_i = i
         while new_i == i:
-            new_i = random.randint(0, ex_num - 1)
+            new_i = random.randint(0, ex_num-1)
 
         y_child_perm_list.append(y_child[new_i, ::])
     y_child_perm = np.stack(y_child_perm_list)
 
-    return X_fathers, X_mothers, y_child_perm
+    return X_fathers[:example_amount, ::], X_mothers[:example_amount, ::], y_child_perm
