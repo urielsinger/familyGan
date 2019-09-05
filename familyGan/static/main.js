@@ -13,8 +13,8 @@ $( document ).ready(function() {
 
     $(".overlay").css("display","none");
 
-    if(window.location.href.split("/").length < 4 && window.location.href.split("/")[3]){
-        $('#imagePreview').attr('src', "upload_files/"+window.location.href.split("/")[3]);
+    if(window.location.href.endsWith(".png")){
+        $('.image--cover').attr('src', "get_image/"+window.location.href.split("/")[3]).hide().fadeIn(1000);
     }
 
     $("#imageUpload1").change(function() {

@@ -122,3 +122,14 @@ h1 small {
     transform: rotate(360deg);
   }
 }
+
+
+.image--cover {
+  width: 400px;
+  height: 400px;
+  border-radius: 30%;
+  margin: 20px;
+
+  object-fit: cover;
+  object-position: center right;
+}
