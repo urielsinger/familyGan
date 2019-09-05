@@ -7,12 +7,27 @@ from auto_tqdm import tqdm
 from bokeh.layouts import column
 from bokeh.layouts import row
 from bokeh.models import CustomJS, ColumnDataSource, Slider
-from bokeh.models import Image
 from bokeh.models.glyphs import ImageURL
 from bokeh.plotting import figure
 from bokeh.plotting import show
 
 from familyGan.load_data import get_files_from_path
+
+
+def _disable_all_for_pictures(p):
+    p.toolbar.logo = None
+    p.toolbar_location = None
+    p.xgrid.grid_line_color = None
+    p.ygrid.grid_line_color = None
+
+    p.xaxis.major_tick_line_color = None  # turn off x-axis major ticks
+    p.xaxis.minor_tick_line_color = None  # turn off x-axis minor ticks
+    p.yaxis.major_tick_line_color = None  # turn off y-axis major ticks
+    p.yaxis.minor_tick_line_color = None  # turn off y-axis minor ticks
+    p.xaxis.major_label_text_font_size = '0pt'  # preferred method for removing tick labels
+    p.yaxis.major_label_text_font_size = '0pt'  # preferred method for removing tick labels
+
+    return p
 
 
 def _save_pkl_images_to_local_path(pkl_folder_path) -> (list, list, list):
@@ -23,7 +38,7 @@ def _save_pkl_images_to_local_path(pkl_folder_path) -> (list, list, list):
     # Save folders in curr folder for bokeh access
     os.makedirs("pics/", exist_ok=True)
     father_img_paths, mother_img_paths, child_img_paths = [], [], []
-    for i, filep in enumerate(tqdm(get_files_from_path(pkl_folder_path))):
+    for i, filep in enumerate(tqdm(get_files_from_path(pkl_folder_path), desc="loading family photos:")):
         with open(filep, 'rb') as f:
             (father_image, father_latent_f), (mother_image, mother_latent_f), (child_image, child_latent_f) = pkl.load(
                 f)
@@ -40,7 +55,6 @@ def _save_pkl_images_to_local_path(pkl_folder_path) -> (list, list, list):
 
     return father_img_paths, mother_img_paths, child_img_paths
 
-
 def _save_pred_images_to_local_path(pkl_folder_path, predictions_folder_path) -> list:
     """
     :param pkl_folder_path: path with models prediction folders
@@ -52,16 +66,17 @@ def _save_pred_images_to_local_path(pkl_folder_path, predictions_folder_path) ->
 
     # Save folders in curr folder for bokeh access
     os.makedirs("pics/", exist_ok=True)
-    for i, filep in enumerate(get_files_from_path(pkl_folder_path)):
+    for i, filep in enumerate(tqdm(get_files_from_path(pkl_folder_path), desc="loading pred photos:")):
         fname = os.path.basename(filep)
 
         for j, model_name in enumerate(model_names):
             model_ex_path = f"{predictions_folder_path}/{model_name}/{fname}"
             if os.path.exists(model_ex_path):
+                print(model_ex_path)
                 with open(model_ex_path, 'rb') as f:
                     (model_pred_child_img, model_pred_child_latent_f) = pkl.load(f)
             else:
-                model_pred_child_img = Image.fromarray(np.zeros((3, 1024, 1024)), 'RGB')
+                model_pred_child_img = Image.new('RGB', (1024, 1024))
 
             model_pred_local_p = f'pics/{i}-pred-{model_name}.png'
             model_pred_child_img.save(model_pred_local_p)
@@ -71,8 +86,10 @@ def _save_pred_images_to_local_path(pkl_folder_path, predictions_folder_path) ->
 
 
 def family_view_with_slider(pkl_folder_path):
-    # TODO: not tested
-
+    """
+    View interactively with bokeh a family album of all the triplets
+    :param pkl_folder_path: pkl folder path containing all the family triplets
+    """
     father_img_paths, mother_img_paths, child_img_paths = _save_pkl_images_to_local_path(pkl_folder_path)
     n = len(father_img_paths)
 
@@ -91,17 +108,7 @@ def family_view_with_slider(pkl_folder_path):
                                             x=[1] * n, y=[1] * n, w=[1] * n, h=[1] * n))
         image = ImageURL(url="url", x="x", y="y", w="w", h="h", anchor="bottom_left")
         p.add_glyph(source, glyph=image)
-        p.toolbar.logo = None
-        p.toolbar_location = None
-        p.xgrid.grid_line_color = None
-        p.ygrid.grid_line_color = None
-
-        p.xaxis.major_tick_line_color = None  # turn off x-axis major ticks
-        p.xaxis.minor_tick_line_color = None  # turn off x-axis minor ticks
-        p.yaxis.major_tick_line_color = None  # turn off y-axis major ticks
-        p.yaxis.minor_tick_line_color = None  # turn off y-axis minor ticks
-        p.xaxis.major_label_text_font_size = '0pt'  # preferred method for removing tick labels
-        p.yaxis.major_label_text_font_size = '0pt'  # preferred method for removing tick labels
+        _disable_all_for_pictures(p)
 
         plots.append(p)
         sources.append(source)
@@ -135,7 +142,12 @@ def family_view_with_slider(pkl_folder_path):
 
 
 def family_view_with_slider_and_predictions(pkl_folder_path, predictions_folder_path):
-    # TODO: not tested
+    """
+    View interactively with bokeh a family album of all the triplets
+    and the predictions from all the models
+    :param pkl_folder_path: pkl folder path containing all the family triplets
+    :param predictions_folder_path: folder path containing the prediction pkls
+    """
 
     father_img_paths, mother_img_paths, child_img_paths = _save_pkl_images_to_local_path(pkl_folder_path)
     n = len(father_img_paths)
@@ -159,18 +171,7 @@ def family_view_with_slider_and_predictions(pkl_folder_path, predictions_folder_
                                             x=[1] * n, y=[1] * n, w=[1] * n, h=[1] * n))
         image = ImageURL(url="url", x="x", y="y", w="w", h="h", anchor="bottom_left")
         p.add_glyph(source, glyph=image)
-        p.toolbar.logo = None
-        p.toolbar_location = None
-        p.xgrid.grid_line_color = None
-        p.ygrid.grid_line_color = None
-
-        p.xaxis.major_tick_line_color = None  # turn off x-axis major ticks
-        p.xaxis.minor_tick_line_color = None  # turn off x-axis minor ticks
-        p.yaxis.major_tick_line_color = None  # turn off y-axis major ticks
-        p.yaxis.minor_tick_line_color = None  # turn off y-axis minor ticks
-        p.xaxis.major_label_text_font_size = '0pt'  # preferred method for removing tick labels
-        p.yaxis.major_label_text_font_size = '0pt'  # preferred method for removing tick labels
-
+        _disable_all_for_pictures(p)
         family_plots.append(p)
         sources_dict[f"source{i}"] = source
 
@@ -178,29 +179,18 @@ def family_view_with_slider_and_predictions(pkl_folder_path, predictions_folder_
     pred_plots = []
     model_names = [o for o in os.listdir(predictions_folder_path) if os.path.isdir(os.path.join(predictions_folder_path, o))]
 
-    pathes = _save_pred_images_to_local_path(pkl_folder_path, predictions_folder_path)
+    all_models_picture_paths = _save_pred_images_to_local_path(pkl_folder_path, predictions_folder_path)
     pred_plot_num = len(model_names)
 
     for i, model_name in enumerate(model_names):
         p = figure(height=300, width=300, title=model_name)
-        img_paths = pathes[i]
+        img_paths = all_models_picture_paths[i]
         source = ColumnDataSource(data=dict(url=[img_paths[0]] * n,
                                             url_orig=img_paths,
                                             x=[1] * n, y=[1] * n, w=[1] * n, h=[1] * n))
         image = ImageURL(url="url", x="x", y="y", w="w", h="h", anchor="bottom_left")
         p.add_glyph(source, glyph=image)
-
-        p.toolbar.logo = None
-        p.toolbar_location = None
-        p.xgrid.grid_line_color = None
-        p.ygrid.grid_line_color = None
-
-        p.xaxis.major_tick_line_color = None  # turn off x-axis major ticks
-        p.xaxis.minor_tick_line_color = None  # turn off x-axis minor ticks
-        p.yaxis.major_tick_line_color = None  # turn off y-axis major ticks
-        p.yaxis.minor_tick_line_color = None  # turn off y-axis minor ticks
-        p.xaxis.major_label_text_font_size = '0pt'  # preferred method for removing tick labels
-        p.yaxis.major_label_text_font_size = '0pt'  # preferred method for removing tick labels
+        _disable_all_for_pictures(p)
 
         pred_plots.append(p)
         sources_dict[f"source{family_plot_num+i}"] = source
