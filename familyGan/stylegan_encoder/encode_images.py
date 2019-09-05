@@ -57,6 +57,8 @@ def main():
     # Optimize (only) dlatents by minimizing perceptual loss between reference and generated images in feature space
     for images_batch in tqdm(split_to_batches(ref_images, args.batch_size), total=len(ref_images)//args.batch_size):
         names = [os.path.splitext(os.path.basename(x))[0] for x in images_batch]
+        if os.path.exists(os.path.join(args.generated_images_dir, f'{names[0]}.png')):
+            continue
 
         perceptual_model.set_reference_images(images_batch)
         op = perceptual_model.optimize(generator.dlatent_variable, iterations=args.iterations, learning_rate=args.lr)

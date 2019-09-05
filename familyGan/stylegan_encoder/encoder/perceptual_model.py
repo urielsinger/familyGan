@@ -36,10 +36,11 @@ class PerceptualModel:
         generated_image = preprocess_input(tf.image.resize_images(generated_image_tensor,
                                                                   (self.img_size, self.img_size), method=1))
         generated_img_features = self.perceptual_model(generated_image)
-
-        self.ref_img_features = tf.get_variable('ref_img_features', shape=generated_img_features.shape,
-                                                dtype='float32', initializer=tf.initializers.zeros())
-        self.features_weight = tf.get_variable('features_weight', shape=generated_img_features.shape,
+        with tf.variable_scope("ref_img_features", reuse=tf.AUTO_REUSE) as scope:
+            self.ref_img_features = tf.get_variable('ref_img_features', shape=generated_img_features.shape,
+                                                    dtype='float32', initializer=tf.initializers.zeros())
+        with tf.variable_scope("features_weight", reuse=tf.AUTO_REUSE) as scope:
+            self.features_weight = tf.get_variable('features_weight', shape=generated_img_features.shape,
                                                dtype='float32', initializer=tf.initializers.zeros())
         self.sess.run([self.features_weight.initializer, self.features_weight.initializer])
 
@@ -49,6 +50,28 @@ class PerceptualModel:
     def set_reference_images(self, images_list):
         assert(len(images_list) != 0 and len(images_list) <= self.batch_size)
         loaded_image = load_images(images_list, self.img_size)
+        image_features = self.perceptual_model.predict_on_batch(loaded_image)
+
+        # in case if number of images less than actual batch size
+        # can be optimized further
+        weight_mask = np.ones(self.features_weight.shape)
+        if len(images_list) != self.batch_size:
+            features_space = list(self.features_weight.shape[1:])
+            existing_features_shape = [len(images_list)] + features_space
+            empty_features_shape = [self.batch_size - len(images_list)] + features_space
+
+            existing_examples = np.ones(shape=existing_features_shape)
+            empty_examples = np.zeros(shape=empty_features_shape)
+            weight_mask = np.vstack([existing_examples, empty_examples])
+
+            image_features = np.vstack([image_features, np.zeros(empty_features_shape)])
+
+        self.sess.run(tf.assign(self.features_weight, weight_mask))
+        self.sess.run(tf.assign(self.ref_img_features, image_features))
+
+    def set_reference_images_from_image(self, images_list):
+        assert(len(images_list) != 0 and len(images_list) <= self.batch_size)
+        loaded_image = preprocess_input(images_list)
         image_features = self.perceptual_model.predict_on_batch(loaded_image)
 
         # in case if number of images less than actual batch size
