@@ -49,30 +49,30 @@ moustache_direction = np.load(f'{direction_path}/moustache_direction.npy')
 sideburns_direction = np.load(f'{direction_path}/sideburns_direction.npy')
 
 all_directions = np.stack([gender_direction,
-                                 gender_direction,
-                                 headPose_yaw_direction,
-                                 headPose_roll_direction,
-                                 # headPose_pitch_directio
-                                 age_kid_direction,
-                                 age_middle_direction,
-                                 age_young_direction,
-                                 age_old_direction,
-                                 glasses_direction,
-                                 smile_direction,
-                                 anger_direction,
-                                 sadness_direction,
-                                 contempt_direction,
-                                 disgust_direction,
-                                 fear_direction,
-                                 happiness_direction,
-                                 neutral_direction,
-                                 surprise_direction,
-                                 eyeMakeup_direction,
-                                 lipMakeup_direction,
-                                 beard_direction,
-                                 facialhair_direction,
-                                 moustache_direction,
-                                 sideburns_direction])
+                           gender_direction,
+                           headPose_yaw_direction,
+                           headPose_roll_direction,
+                           # headPose_pitch_directio
+                           age_kid_direction,
+                           age_middle_direction,
+                           age_young_direction,
+                           age_old_direction,
+                           glasses_direction,
+                           smile_direction,
+                           anger_direction,
+                           sadness_direction,
+                           contempt_direction,
+                           disgust_direction,
+                           fear_direction,
+                           happiness_direction,
+                           neutral_direction,
+                           surprise_direction,
+                           eyeMakeup_direction,
+                           lipMakeup_direction,
+                           beard_direction,
+                           facialhair_direction,
+                           moustache_direction,
+                           sideburns_direction])
 
 MALE, FEMALE = 'm', 'f'
 GENDERS = [MALE, FEMALE]
@@ -83,3 +83,5 @@ aligned_path = f'{DATA_DIR_PATH}/aligned_images/'
 generated_path = f'{DATA_DIR_PATH}/generated_images/'
 latent_path = f'{DATA_DIR_PATH}/latent_representations/'
 pkls_path = f'{DATA_DIR_PATH}/pkl_files/'
+EMBEDDING_PATH = f'{DATA_DIR_PATH}/tmp_generator_out'
+OUTPUT_FAKE_PATH = f'{DATA_DIR_PATH}/tmp_fake_children'
