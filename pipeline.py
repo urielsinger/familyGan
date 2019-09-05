@@ -22,6 +22,7 @@ def align_image(img):
 
 
 def image2latent(img, iterations=1000):
+    config.init_generator()
     generator = Generator(config.Gs_network, 1)
     perceptual_model = PerceptualModel(256)
     perceptual_model.build_perceptual_model(generator.generated_image)
@@ -73,11 +74,12 @@ def full_pipe(father, mother, specific=''):
             return aligned_latent
 
         print("starting latent extraction")
-        father_latent, mother_latent = list(map(paralel_tolatent, list(enumerate([father_aligned, mother_aligned]))))
+        father_latent, mother_latent = list(parmap(paralel_tolatent, list(enumerate([father_aligned, mother_aligned]))))
         print("end latent extraction")
         # _, father_latent = image2latent(father_aligned)
         # _, mother_latent = image2latent(mother_aligned)
 
+        print(father_latent)
         if specific != '':
             with open(cache_path, 'wb') as handle:
                 pickle.dump((father_latent, mother_latent), handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -105,13 +107,13 @@ def integrate_with_web(path_father, path_mother):
     random_string = randomString(30)
     child_path = join(parent_path, random_string + '.png')
     child.save(child_path)
-    return child_path
+    return random_string + '.png'
 
 
 
 if __name__ == '__main__':
-    specific = 'uriel'
-    father = Image.open('/data/home/morpheus/repositories/familyGan/custom_data/uriel.png')
-    mother = Image.open('/data/home/morpheus/repositories/familyGan/custom_data/hodaya.png')
+    specific = ''
+    father = Image.open('/data/home/morpheus/repositories/familyGan/custom_data/kineret-F.png')
+    mother = Image.open('/data/home/morpheus/repositories/familyGan/custom_data/kineret-M.png')
     child = full_pipe(father, mother, specific=specific)
     child.save(f'/data/home/morpheus/repositories/familyGan/custom_data/{specific}_child_coef{str(coef)}.png')

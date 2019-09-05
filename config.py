@@ -21,7 +21,7 @@ URL_FFHQ = 'https://drive.google.com/uc?id=1MEGjdvVpUsu1jB4zrXZN7Y4kBBOzizDQ'
 
 synthesis_kwargs = dict(output_transform=dict(func=tflib.convert_images_to_uint8, nchw_to_nhwc=True), minibatch_size=8)
 
-
+generator_network, discriminator_network, Gs_network, generator = None, None, None, None
 def init_generator():
     global generator_network, discriminator_network, Gs_network, generator
     if generator is None:
