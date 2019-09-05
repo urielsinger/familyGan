@@ -37,3 +37,4 @@ dependencies:
     - tqdm
     - tb-nightly  # for tensorboard
     - tensorflow-gpu
+    - pathos

@@ -145,7 +145,15 @@ def family_view_with_slider(pkl_folder_path):
     slider = Slider(start=1, end=n, value=1, step=1, title="example number")
     slider.js_on_change('value', callback)
 
-    layout = column(slider, row(*plots))
+    column_layout = [slider]
+    curr_row = []
+    for i in range(len(plots)):
+        if i!=0 and i % 3 == 0:
+            column_layout.append(row(*curr_row.copy()))
+            curr_row = []
+        else:
+            curr_row.append(plots[i])
+    layout = column(*column_layout)
 
     show(layout)
 
@@ -230,6 +238,18 @@ def family_view_with_slider_and_predictions(pkl_folder_path, predictions_folder_
     slider = Slider(start=1, end=n, value=1, step=1, title="example number")
     slider.js_on_change('value', callback)
 
-    layout = column(slider, row(*family_plots), row(*pred_plots))
+    column_layout = [slider, row(*family_plots)]
+    curr_row = []
+    for i in range(len(pred_plots)):
+        curr_row.append(pred_plots[i])
+        if (i+1) % 3 == 0:
+            column_layout.append(row(*curr_row.copy()))
+            curr_row = []
+
+    if len(curr_row) != 0:
+        column_layout.append(row(*curr_row.copy()))
+    layout = column(*column_layout)
+
+    # layout = column(slider, row(*family_plots), row(*pred_plots))
 
     show(layout)
