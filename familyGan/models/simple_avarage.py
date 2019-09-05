@@ -1,6 +1,7 @@
 from familyGan.models.basic_family_regressor import BasicFamilyReg
 import numpy as np
 import config
+import random
 
 
 class SimpleAverageModel(BasicFamilyReg):
@@ -15,4 +16,6 @@ class SimpleAverageModel(BasicFamilyReg):
     def predict(self, X_fathers, X_mothers):
         y_pred_old = np.mean([X_fathers, X_mothers], axis=0)
         y_pred_young = y_pred_old + self.coef * self.direction
+        gender_coef = random.choice([-2, 2])
+        y_pred_young = y_pred_young + gender_coef * config.gender_direction
         return y_pred_young

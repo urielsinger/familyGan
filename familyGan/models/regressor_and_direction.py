@@ -1,3 +1,5 @@
+import random
+
 import torch
 from scipy.linalg import orth
 from torch.nn.modules.loss import _Loss
@@ -5,7 +7,6 @@ from torch.optim import Adam
 
 import config
 from familyGan.models.basic_family_regressor import BasicFamilyReg
-from sklearn.linear_model import LinearRegression
 import numpy as np
 from torch import nn
 
@@ -38,7 +39,11 @@ class RegressorAndDirection(BasicFamilyReg):
         X_fathers = np2torch(X_fathers)
         X_mothers = np2torch(X_mothers)
         with torch.no_grad():
-            return self.model(X_fathers, X_mothers)
+            y_pred = self.model(X_fathers, X_mothers)
+        y_pred = y_pred + self.coef * self.direction
+        gender_coef = random.choice([-2, 2])
+        y_pred = y_pred + gender_coef * config.gender_direction
+        return y_pred
 
 
 class ChildNet(nn.Module):
@@ -49,12 +54,6 @@ class ChildNet(nn.Module):
         self.mother_weights = torch.nn.Parameter(torch.randn(2, latent_size))
         self.register_parameter('father_params', self.father_weights)
         self.register_parameter('mother_params', self.mother_weights)
-
-        # self.father_weights.requires
-        #
-        # self.mother_attention = nn.Linear(latent_size, len(config.all_directions))
-        # self.linear = nn.Linear(latent_size * 2, latent_size)
-        # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     def forward(self, *input):
         X_fathers, X_mothers = input
