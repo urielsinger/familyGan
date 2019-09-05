@@ -50,7 +50,6 @@ def merge_stylegan_outputs_to_triplet_pickles(aligned_path=config.aligned_path,
         fname = os.path.basename(filep)
 
         fname_no_type = fname[:-4]
-        print(fname_no_type)
         family_con, ex_num, end = fname_no_type.split('-')
         child_type, child_num = end.split('_')
 
@@ -64,6 +63,7 @@ def merge_stylegan_outputs_to_triplet_pickles(aligned_path=config.aligned_path,
 
         if not verify_files_exist(aligned_path, latent_path, father_fname_no_type) or not \
                 verify_files_exist(aligned_path, latent_path, mother_fname_no_type):
+            print(f"failed working on {fname_no_type}")
             continue
 
         father_img, father_latent_f = load_aligned_image_latent(father_fname_no_type, aligned_path, latent_path)

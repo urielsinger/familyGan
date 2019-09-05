@@ -2,23 +2,31 @@ import pickle
 
 from sklearn.model_selection import train_test_split
 
+import config
 from config import EMBEDDING_PATH, MALE, FEMALE, OUTPUT_FAKE_PATH
 from familyGan.load_data import merge_stylegan_outputs_to_triplet_pickles, load_data_for_training
 from os.path import join as pjoin
 from familyGan.data_handler import dataHandler
+from familyGan.models.regressor_and_direction import RegressorAndDirection
 from familyGan.models.simple_avarage import SimpleAverageModel
 import logging
 import os
 
 gender_filter = None  # None, FEMALE, MALE
-model_config = dict(coef=-2)
-latent_model = SimpleAverageModel(**model_config)
+
+# model_config = dict(coef=-2)
+# latent_model = SimpleAverageModel(**model_config)
+
+model_config = dict(epochs=10, lr = 1e-4, coef=-2)
+latent_model = RegressorAndDirection(**model_config)
+
 data_handler = dataHandler()
 TEST_RATIO = 0.05
 logger = logging.getLogger("train")
 
 if __name__ == '__main__':
     logger.info("train_predict started")
+
     # region IMAGE2LATENT
     aligned_path = pjoin(EMBEDDING_PATH, 'aligned_images')
     latent_path = pjoin(EMBEDDING_PATH, 'latent_representations')
