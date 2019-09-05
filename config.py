@@ -4,11 +4,15 @@ import pickle
 from familyGan.stylegan_encoder import dnnlib
 import familyGan.stylegan_encoder.dnnlib.tflib as tflib
 from familyGan.stylegan_encoder import config
-from familyGan.stylegan_encoder.encoder.generator_model import Generator
 import sys
+
+from familyGan.stylegan_encoder.align_images import unpack_bz2, LANDMARKS_MODEL_URL
+from keras.utils import get_file
+from familyGan.stylegan_encoder.ffhq_dataset.landmarks_detector import LandmarksDetector
 
 sys.modules['dnnlib'] = dnnlib
 sys.modules['tflib'] = tflib
+from familyGan.stylegan_encoder.encoder.generator_model import Generator
 
 FAMILYGAN_DIR_PATH = os.path.dirname(__file__)
 DATA_DIR_PATH = f'{os.path.dirname(os.path.dirname(FAMILYGAN_DIR_PATH))}/familyGan_data/TSKinFace_Data'
@@ -21,6 +25,12 @@ tflib.init_tf()
 with dnnlib.util.open_url(URL_FFHQ, cache_dir=config.cache_dir) as f:
     generator_network, discriminator_network, Gs_network = pickle.load(f)
 generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
+
+
+landmarks_model_path = unpack_bz2(get_file('shape_predictor_68_face_landmarks.dat.bz2',
+                                               LANDMARKS_MODEL_URL, cache_subdir='temp'))
+landmarks_detector = LandmarksDetector(landmarks_model_path)
+
 
 direction_path = os.path.join(FAMILYGAN_DIR_PATH, 'familyGan', 'stylegan_encoder', 'trained_directions')
 gender_direction = np.load(f'{direction_path}/gender_direction.npy')

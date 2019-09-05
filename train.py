@@ -1,21 +1,32 @@
 import pickle
 
+from sklearn.model_selection import train_test_split
+
+import config
 from config import EMBEDDING_PATH, MALE, FEMALE, OUTPUT_FAKE_PATH
 from familyGan.load_data import merge_stylegan_outputs_to_triplet_pickles, load_data_for_training
 from os.path import join as pjoin
 from familyGan.data_handler import dataHandler
+from familyGan.models.regressor_and_direction import RegressorAndDirection
 from familyGan.models.simple_avarage import SimpleAverageModel
 import logging
 import os
 
-gender_filter = None # None, FEMALE, MALE
-model_config = dict(coef = -2)
-latent_model = SimpleAverageModel(**model_config)
+gender_filter = None  # None, FEMALE, MALE
+
+# model_config = dict(coef=-2)
+# latent_model = SimpleAverageModel(**model_config)
+
+model_config = dict(epochs=10, lr = 1e-4, coef=-2)
+latent_model = RegressorAndDirection(**model_config)
+
 data_handler = dataHandler()
+TEST_RATIO = 0.05
 logger = logging.getLogger("train")
 
 if __name__ == '__main__':
     logger.info("train_predict started")
+
     # region IMAGE2LATENT
     aligned_path = pjoin(EMBEDDING_PATH, 'aligned_images')
     latent_path = pjoin(EMBEDDING_PATH, 'latent_representations')
@@ -25,9 +36,12 @@ if __name__ == '__main__':
     # endregion
 
     # region REGRESSION
-    # TODO: add train test split
-    latent_model.fit(X_fathers, X_mothers, y_children)
-    y_hat_children = latent_model.predict(X_fathers, X_mothers)
+    fathers_train, fathers_test, mothers_train, mothers_test \
+        , child_train, child_test, file_list_train, file_list_test \
+                = train_test_split(X_fathers, X_mothers, y_children, file_list,
+                           test_size=TEST_RATIO, random_state=42)
+    latent_model.fit(fathers_train, mothers_train, child_train)
+    y_hat_children = latent_model.predict(fathers_test, mothers_test)
     # endregion
 
     # region LATENT2IMAGE
@@ -35,16 +49,16 @@ if __name__ == '__main__':
     for child_latent in y_hat_children:
         children_fake.append(data_handler.latent2image(child_latent))
 
-    assert len(file_list) == len(children_fake)
+    assert len(file_list_test) == len(children_fake)
     fake_path = pjoin(OUTPUT_FAKE_PATH, latent_model.__class__.__name__)
     if not os.path.isdir(OUTPUT_FAKE_PATH):
-        os.mkdir(OUTPUT_FAKE_PATH+'/')
+        os.mkdir(OUTPUT_FAKE_PATH + '/')
     if not os.path.isdir(fake_path):
-        os.mkdir(fake_path+'/')
-    for k, fakefile in enumerate(file_list):
+        os.mkdir(fake_path + '/')
+    for k, fakefile in enumerate(file_list_test):
         fake_filepath = pjoin(fake_path, os.path.basename(fakefile))
         with open(fake_filepath, 'wb') as f:
-            pickle.dump( (children_fake[k], y_hat_children[k]), f )
+            pickle.dump((children_fake[k], y_hat_children[k]), f)
 
     # endregion
 

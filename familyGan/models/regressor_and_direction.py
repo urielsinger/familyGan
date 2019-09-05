@@ -1,3 +1,5 @@
+import random
+
 import torch
 from scipy.linalg import orth
 from torch.nn.modules.loss import _Loss
@@ -5,17 +7,17 @@ from torch.optim import Adam
 
 import config
 from familyGan.models.basic_family_regressor import BasicFamilyReg
-from sklearn.linear_model import LinearRegression
 import numpy as np
 from torch import nn
 
 
 class RegressorAndDirection(BasicFamilyReg):
-    def __init__(self, epochs: int = 10, lr: float = 1e-4):
+    def __init__(self, epochs: int = 10, lr: float = 1e-4, coef: float = -2):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.epochs = epochs
         self.lr = lr
+        self.coef = coef
         self.model = ChildNet().to(self.device)
         self.loss = ChildLoss()
         self.optimizer = Adam(params=self.model.parameters(), lr=lr)
@@ -38,37 +40,35 @@ class RegressorAndDirection(BasicFamilyReg):
         X_fathers = np2torch(X_fathers)
         X_mothers = np2torch(X_mothers)
         with torch.no_grad():
-            return self.model(X_fathers, X_mothers)
+            y_pred = self.model(X_fathers, X_mothers)
+        y_pred = y_pred + self.coef * np2torch(config.age_kid_direction)
+        return self.add_random_gender(y_pred)
 
 
 class ChildNet(nn.Module):
     def __init__(self, latent_size=18 * 512):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.father_weights = torch.nn.Parameter(torch.randn(2, latent_size))
-        self.mother_weights = torch.nn.Parameter(torch.randn(2, latent_size))
+        self.father_weights = torch.nn.Parameter(torch.randn(2, 1, latent_size))
+        self.mother_weights = torch.nn.Parameter(torch.randn(2, 1, latent_size))
         self.register_parameter('father_params', self.father_weights)
         self.register_parameter('mother_params', self.mother_weights)
 
-        # self.father_weights.requires
-        #
-        # self.mother_attention = nn.Linear(latent_size, len(config.all_directions))
-        # self.linear = nn.Linear(latent_size * 2, latent_size)
-        # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
     def forward(self, *input):
         X_fathers, X_mothers = input
-        X_fathers = X_fathers * self.father_weights[0, :] + self.father_weights[1, :]
-        X_mothers = X_mothers * self.mother_weights[0, :] + self.mother_weights[1, :]
+        X_fathers_moved = X_fathers.flatten(1, 2) * self.father_weights[0] + self.father_weights[1]
+        X_mothers_moved = X_mothers.flatten(1, 2) * self.mother_weights[0] + self.mother_weights[1]
 
-        y_pred = torch.mean(torch.stack([X_fathers, X_mothers]), axis=0)
-
+        y_pred = torch.mean(torch.stack([X_fathers_moved, X_mothers_moved]), axis=0)
+        y_pred = y_pred.reshape(X_fathers.shape)
         return y_pred
 
 
 class ChildLoss(_Loss):
 
     def forward(self, input, target, hyper_plane=config.all_directions):
+        input = input.flatten(1, 2)
+        target = target.flatten(1, 2)
         hyper_plane = hyper_plane.reshape(hyper_plane.shape[0], -1)  # flatten
         hyper_plane = orth(hyper_plane.T).T  # orthogonize
         hyper_plane = np2torch(hyper_plane)

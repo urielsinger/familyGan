@@ -1,0 +1,52 @@
+<html>
+<head>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.3/css/bootstrap.min.css" rel="stylesheet">
+
+<link href="https://fonts.googleapis.com/css?family=Open+Sans:300" rel="stylesheet">
+<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+
+<link rel="stylesheet" type="text/css" href="static/main.css" media="screen">
+<script type="text/javascript" src="{{ url_for('static', filename='main.js') }}"></script>
+
+</head>
+<body>
+<div class="container">
+  <div class="row">
+    <div class="col-sm-6 imgUp">
+     <div class="avatar-upload">
+        <div class="avatar-edit">
+            <input type='file' id="imageUpload1" accept=".png, .jpg, .jpeg" />
+            <label for="imageUpload1"></label>
+        </div>
+        <div class="avatar-preview">
+            <div id="imagePreview1" style="background-image: url(http://www.pngall.com/wp-content/uploads/2/Upload-PNG-Image-File.png);background-size: 180px 133px;">
+            </div>
+        </div>
+     </div>
+    </div>
+     <div class="col-sm-6 imgUp">
+      <div class="avatar-upload">
+        <div class="avatar-edit">
+            <input type='file' id="imageUpload2" accept=".png, .jpg, .jpeg" />
+            <label for="imageUpload2"></label>
+        </div>
+        <div class="avatar-preview">
+            <div id="imagePreview2" style="background-image: url(http://www.pngall.com/wp-content/uploads/2/Upload-PNG-Image-File.png);background-size: 180px 133px;">
+            </div>
+        </div>
+     </div>
+    </div>
+  </div><!-- row -->
+  <div class="row">
+      <div style="margin:auto;">
+        <button type="button" class="btn btn-dark" style="height: 50px;width: 300px;" id="uploadBtn">Upload</button>
+      </div>
+  </div>
+      <div id="progress">
+        <div class="bar" style="width: 0%;"></div>
+    </div>
+</div><!-- container -->
+</div>
+</body>
+</html>
