@@ -5,7 +5,7 @@ import random
 
 
 class SimpleAverageModel(BasicFamilyReg):
-    def __init__(self, direction=config.age_kid_direction, coef=1, **kwargs):
+    def __init__(self, direction=config.age_kid_direction, coef=2, **kwargs):
         super().__init__(**kwargs)
         self.direction = direction
         self.coef = coef

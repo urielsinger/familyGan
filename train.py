@@ -12,16 +12,18 @@ from familyGan.models.simple_avarage import SimpleAverageModel
 import logging
 import os
 
+from familyGan.models.translator import Translator
+
 gender_filter = None  # None, FEMALE, MALE
 
-# model_config = dict(coef=-2)
-# latent_model = SimpleAverageModel(**model_config)
+model_config = dict(coef=-1.5)
+latent_model = SimpleAverageModel(**model_config)
 
-model_config = dict(epochs=10, lr = 1e-4, coef=-2)
-latent_model = RegressorAndDirection(**model_config)
+# model_config = dict(epochs=100, lr = 1, coef=-1.5)
+# latent_model = RegressorAndDirection(**model_config)
 
 data_handler = dataHandler()
-TEST_RATIO = 0.05
+TEST_RATIO = 0.000001
 logger = logging.getLogger("train")
 
 if __name__ == '__main__':
@@ -41,7 +43,7 @@ if __name__ == '__main__':
                 = train_test_split(X_fathers, X_mothers, y_children, file_list,
                            test_size=TEST_RATIO, random_state=42)
     latent_model.fit(fathers_train, mothers_train, child_train)
-    y_hat_children = latent_model.predict(fathers_test, mothers_test)
+    y_hat_children = latent_model.predict(fathers_train, mothers_train)
     # endregion
 
     # region LATENT2IMAGE
@@ -49,17 +51,21 @@ if __name__ == '__main__':
     for child_latent in y_hat_children:
         children_fake.append(data_handler.latent2image(child_latent))
 
-    assert len(file_list_test) == len(children_fake)
+    assert len(file_list_train) == len(children_fake)
     fake_path = pjoin(OUTPUT_FAKE_PATH, latent_model.__class__.__name__)
     if not os.path.isdir(OUTPUT_FAKE_PATH):
         os.mkdir(OUTPUT_FAKE_PATH + '/')
     if not os.path.isdir(fake_path):
         os.mkdir(fake_path + '/')
-    for k, fakefile in enumerate(file_list_test):
+    for k, fakefile in enumerate(file_list_train):
         fake_filepath = pjoin(fake_path, os.path.basename(fakefile))
         with open(fake_filepath, 'wb') as f:
             pickle.dump((children_fake[k], y_hat_children[k]), f)
 
     # endregion
-
+    # save the model
+    model_path = f'/mnt/familyGan_data/TSKinFace_Data/models/'
+    os.makedirs(model_path, exist_ok=True)
+    with open(os.path.join(model_path, f'{latent_model.__class__.__name__}.pkl'), 'wb') as f:
+        pickle.dump(latent_model, f)
     logger.info("train_predict finished")

@@ -2,7 +2,7 @@ import random
 
 import torch
 from scipy.linalg import orth
-from torch.nn.modules.loss import _Loss
+from torch.nn.modules.loss import _Loss, MSELoss
 from torch.optim import Adam
 
 import config
@@ -12,15 +12,16 @@ from torch import nn
 
 
 class RegressorAndDirection(BasicFamilyReg):
-    def __init__(self, epochs: int = 10, lr: float = 1e-4, coef: float = -2):
+    def __init__(self, epochs: int = 10, lr: float = 1, coef: float = -1):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.epochs = epochs
         self.lr = lr
         self.coef = coef
         self.model = ChildNet().to(self.device)
-        self.loss = ChildLoss()
+        self.loss = MSELoss()
         self.optimizer = Adam(params=self.model.parameters(), lr=lr)
+        self.gamma = 10
 
     def fit(self, X_fathers, X_mothers, y_child):
         # X = torch.from_numpy(np.concatenate([X_fathers, X_mothers], axis=-1)).float().to(self.device)
@@ -31,10 +32,11 @@ class RegressorAndDirection(BasicFamilyReg):
             self.optimizer.zero_grad()
 
             output = self.model(X_fathers, X_mothers)
-            loss = self.loss.forward(output, y)
+            loss = self.loss.forward(output, y) #+ self.gamma * torch.norm(self.model.bias)
 
             loss.backward()
             self.optimizer.step()
+            print(loss)
 
     def predict(self, X_fathers, X_mothers):
         X_fathers = np2torch(X_fathers)
@@ -49,18 +51,22 @@ class ChildNet(nn.Module):
     def __init__(self, latent_size=18 * 512):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.father_weights = torch.nn.Parameter(torch.randn(2, 1, latent_size))
-        self.mother_weights = torch.nn.Parameter(torch.randn(2, 1, latent_size))
+        self.father_weights = torch.nn.Parameter(torch.ones(1, latent_size) / 2)
+        self.mother_weights = torch.nn.Parameter(torch.ones(1, latent_size) / 2)
+        self.bias = torch.nn.Parameter(torch.randn(1, latent_size))
+
         self.register_parameter('father_params', self.father_weights)
         self.register_parameter('mother_params', self.mother_weights)
+        self.register_parameter('bias', self.bias)
 
     def forward(self, *input):
         X_fathers, X_mothers = input
-        X_fathers_moved = X_fathers.flatten(1, 2) * self.father_weights[0] + self.father_weights[1]
-        X_mothers_moved = X_mothers.flatten(1, 2) * self.mother_weights[0] + self.mother_weights[1]
+        X_fathers_moved = X_fathers.flatten(1, 2) * self.father_weights
+        X_mothers_moved = X_mothers.flatten(1, 2) * self.mother_weights
+        X_mean = torch.mean(torch.stack([X_fathers_moved, X_mothers_moved]), axis=0)
+        # output = X_mean + self.bias
 
-        y_pred = torch.mean(torch.stack([X_fathers_moved, X_mothers_moved]), axis=0)
-        y_pred = y_pred.reshape(X_fathers.shape)
+        y_pred = X_mean.reshape(X_fathers.shape)
         return y_pred
 
 
