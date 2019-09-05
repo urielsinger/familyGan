@@ -44,23 +44,26 @@ class RegressorAndDirection(BasicFamilyReg):
 class ChildNet(nn.Module):
     def __init__(self, latent_size=18 * 512):
         super().__init__()
-        self.father_attention = nn.Linear(latent_size, len(config.all_directions))
-        self.mother_attention = nn.Linear(latent_size, len(config.all_directions))
-        self.linear = nn.Linear(latent_size * 2, latent_size)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.father_weights = torch.nn.Parameter(torch.randn(2, latent_size))
+        self.mother_weights = torch.nn.Parameter(torch.randn(2, latent_size))
+        self.register_parameter('father_params', self.father_weights)
+        self.register_parameter('mother_params', self.mother_weights)
+
+        # self.father_weights.requires
+        #
+        # self.mother_attention = nn.Linear(latent_size, len(config.all_directions))
+        # self.linear = nn.Linear(latent_size * 2, latent_size)
+        # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     def forward(self, *input):
         X_fathers, X_mothers = input
-        all_directions = np2torch(config.all_directions.reshape(len(config.all_directions), -1))
+        X_fathers = X_fathers * self.father_weights[0, :] + self.father_weights[1, :]
+        X_mothers = X_mothers * self.mother_weights[0, :] + self.mother_weights[1, :]
 
-        fathers_coefs = self.father_attention(X_fathers)
-        mothers_coefs = self.mother_attention(X_mothers)
+        y_pred = torch.mean(torch.stack([X_fathers, X_mothers]), axis=0)
 
-        moved_fathers = X_fathers + torch.mm(fathers_coefs, all_directions)
-        moved_mothers = X_mothers + torch.mm(mothers_coefs, all_directions)
-
-        output = self.linear(torch.cat([moved_fathers, moved_mothers], dim=1))
-        return output
+        return y_pred
 
 
 class ChildLoss(_Loss):
