@@ -4,6 +4,7 @@ import pickle
 from familyGan.stylegan_encoder import dnnlib
 import familyGan.stylegan_encoder.dnnlib.tflib as tflib
 from familyGan.stylegan_encoder import config
+from familyGan.stylegan_encoder.encoder.generator_model import Generator
 import sys
 
 from familyGan.stylegan_encoder.align_images import unpack_bz2, LANDMARKS_MODEL_URL

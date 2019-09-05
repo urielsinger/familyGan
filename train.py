@@ -11,13 +11,21 @@ from familyGan.models.regressor_and_direction import RegressorAndDirection
 from familyGan.models.simple_avarage import SimpleAverageModel
 import logging
 import os
+from auto_tqdm import tqdm
 
 from familyGan.models.translator import Translator
 
 gender_filter = None  # None, FEMALE, MALE
+model_name = None
+output_path = None
 
-model_config = dict(coef=-1.5)
+model_config = dict(coef=-2, thresh= 1, bgd_norm= True)
 latent_model = SimpleAverageModel(**model_config)
+model_name = "SimpleAverageModelBGDNorm"
+output_path = config.pkls_path
+
+# model_config = dict(epochs=100, lr = 1, coef=-1.5)
+# latent_model = Translator(**model_config)
 
 # model_config = dict(epochs=100, lr = 1, coef=-1.5)
 # latent_model = RegressorAndDirection(**model_config)
@@ -26,6 +34,7 @@ data_handler = dataHandler()
 TEST_RATIO = 0.000001
 logger = logging.getLogger("train")
 
+
 if __name__ == '__main__':
     logger.info("train_predict started")
 
@@ -33,7 +42,8 @@ if __name__ == '__main__':
     aligned_path = pjoin(EMBEDDING_PATH, 'aligned_images')
     latent_path = pjoin(EMBEDDING_PATH, 'latent_representations')
 
-    output_path = merge_stylegan_outputs_to_triplet_pickles(aligned_path, latent_path)
+    if output_path is None:
+        output_path = merge_stylegan_outputs_to_triplet_pickles(aligned_path, latent_path)
     X_fathers, X_mothers, y_children, file_list = load_data_for_training(output_path, gender_filter)
     # endregion
 
@@ -48,11 +58,13 @@ if __name__ == '__main__':
 
     # region LATENT2IMAGE
     children_fake = []
-    for child_latent in y_hat_children:
+
+    for child_latent in tqdm(y_hat_children):
         children_fake.append(data_handler.latent2image(child_latent))
 
     assert len(file_list_train) == len(children_fake)
-    fake_path = pjoin(OUTPUT_FAKE_PATH, latent_model.__class__.__name__)
+    model_dir_name = latent_model.__class__.__name__ if model_name is None else pjoin(OUTPUT_FAKE_PATH, model_name)
+    fake_path = pjoin(OUTPUT_FAKE_PATH, model_dir_name)
     if not os.path.isdir(OUTPUT_FAKE_PATH):
         os.mkdir(OUTPUT_FAKE_PATH + '/')
     if not os.path.isdir(fake_path):
@@ -66,6 +78,7 @@ if __name__ == '__main__':
     # save the model
     model_path = f'/mnt/familyGan_data/TSKinFace_Data/models/'
     os.makedirs(model_path, exist_ok=True)
-    with open(os.path.join(model_path, f'{latent_model.__class__.__name__}.pkl'), 'wb') as f:
+
+    with open(os.path.join(model_path, f'{model_dir_name}.pkl'), 'wb') as f:
         pickle.dump(latent_model, f)
     logger.info("train_predict finished")
