@@ -10,6 +10,10 @@ $( document ).ready(function() {
         }
     }
 
+    if(window.location.href.split("/").length < 4 && window.location.href.split("/")[3]){
+        $('#imagePreview').attr('src', "upload_files/"+window.location.href.split("/")[3]);
+    }
+
     $("#imageUpload1").change(function() {
         readURL(this,"imagePreview1");
     });
