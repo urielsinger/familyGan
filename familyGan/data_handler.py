@@ -118,6 +118,7 @@ class dataHandler:
         config.generator.set_dlatents(latent_vector)
         img_array = config.generator.generate_images()[0]
         img = Image.fromarray(img_array, 'RGB')
+        # TODO: do not resize. Give Zareki same size
         return img.resize((256, 256))
 
     def latent_play(self, latent_vector, **coeffs):

@@ -25,8 +25,8 @@ if __name__ == '__main__':
 
     # region REGRESSION
     # TODO: add train test split
-    mdl = latent_model.fit(X_fathers, X_mothers, y_children)
-    y_hat_children = mdl.predict(X_fathers, X_mothers)
+    latent_model.fit(X_fathers, X_mothers, y_children)
+    y_hat_children = latent_model.predict(X_fathers, X_mothers)
     # endregion
 
     # region LATENT2IMAGE

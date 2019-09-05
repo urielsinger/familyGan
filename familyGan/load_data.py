@@ -11,7 +11,7 @@ import config
 from auto_tqdm import tqdm
 
 
-def get_files_from_path(pathstring) -> List[str]:
+def get_files_from_path(pathstring, filetype:str='pkl') -> List[str]:
     """
     Retrives file names from the folder and returns all pickle paths
 
@@ -23,10 +23,11 @@ def get_files_from_path(pathstring) -> List[str]:
     """
 
     pkl_paths = []
-    for file in Path(pathstring).glob("**/*.npy"):
+    for file in Path(pathstring).glob(f"**/*.{filetype}"):
         pkl_paths.append(str(file))
 
     return pkl_paths
+
 
 def load_aligned_image_latent(fname_no_type, aligned_path, latent_path):
     img = PIL.Image.open(os.path.join(aligned_path, f'{fname_no_type}.png'))
@@ -34,10 +35,18 @@ def load_aligned_image_latent(fname_no_type, aligned_path, latent_path):
     return img, latent_f
 
 
-def merge_stylegan_outputs_to_triplet_pickles(aligned_path=config.aligned_path, generated_path=config.generated_path,
+def verify_files_exist(aligned_path, latent_path, parent_fname):
+    if (not os.path.isfile(os.path.join(aligned_path, f'{parent_fname}.png'))) or (
+            not os.path.isfile(os.path.join(latent_path, f'{parent_fname}.npy'))):
+        return False
+    return True
+
+
+def merge_stylegan_outputs_to_triplet_pickles(aligned_path=config.aligned_path,
                                               latent_path=config.latent_path):
     print("starting merge from folders")
     for filep in tqdm(get_files_from_path(latent_path)):
+
         fname = os.path.basename(filep)
 
         fname_no_type = fname[:-4]
@@ -51,15 +60,21 @@ def merge_stylegan_outputs_to_triplet_pickles(aligned_path=config.aligned_path, 
         child_img, child_latent_f = load_aligned_image_latent(fname_no_type, aligned_path, latent_path)
 
         father_fname_no_type = f"{family_con}-{ex_num}-F_{child_num}"
-        father_img, father_latent_f = load_aligned_image_latent(father_fname_no_type, aligned_path, latent_path)
-
         mother_fname_no_type = f"{family_con}-{ex_num}-M_{child_num}"
+
+        if not verify_files_exist(aligned_path, latent_path, father_fname_no_type) or not \
+                verify_files_exist(aligned_path, latent_path, mother_fname_no_type):
+            continue
+
+        father_img, father_latent_f = load_aligned_image_latent(father_fname_no_type, aligned_path, latent_path)
         mother_img, mother_latent_f = load_aligned_image_latent(mother_fname_no_type, aligned_path, latent_path)
 
         triplet_pkl_fname = f"{family_con}-{ex_num}-{child_type}_{child_num}.pkl"
-        with open(f"{config.pkls_path}/{triplet_pkl_fname}", 'wb') as f:
+        with open(f"{config.pkls_path}{triplet_pkl_fname}", 'wb') as f:
             pkl.dump(((father_img, father_latent_f), (mother_img, mother_latent_f), (child_img, child_latent_f)), f)
     print("done merge from folders")
+    return config.pkls_path
+
 
 def load_data_for_training(pkl_folder_path, gender_filter=None) -> (np.array, np.array, np.array, list):
     print("Starting saved data loading")
@@ -87,6 +102,7 @@ def load_data_for_training(pkl_folder_path, gender_filter=None) -> (np.array, np
 
     return X_fathers, X_mothers, y_child, file_list
 
+
 def load_data_for_deploy(folder_path, gender_filter=None) -> (np.array, np.array):
     print("Starting saved data loading")
 
@@ -108,6 +124,7 @@ def load_data_for_deploy(folder_path, gender_filter=None) -> (np.array, np.array
     print("finished data loading")
 
     return X_fathers, X_mothers
+
 
 def load_false_triplets(X_fathers, X_mothers, y_child, example_amount) -> (np.array, np.array, np.array):
     """
