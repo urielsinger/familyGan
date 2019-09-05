@@ -7,6 +7,7 @@ from PIL import Image
 import pickle
 
 import config
+from familyGan.multiproc_util import parmap
 from familyGan.stylegan_encoder.encoder.perceptual_model import PerceptualModel
 from familyGan.stylegan_encoder.ffhq_dataset.face_alignment import image_align_from_image
 from familyGan.stylegan_encoder.encoder.generator_model import Generator
@@ -44,6 +45,7 @@ def predict(father_latent, mother_latent):
 
 
 def latent2image(latent):
+    config.init_generator()
     latent = latent.reshape((1, 18, 512))
     config.generator.set_dlatents(latent)
     img_array = config.generator.generate_images()[0]
@@ -62,8 +64,19 @@ def full_pipe(father, mother, specific=''):
         mother_aligned = align_image(mother)
 
         # to latent
-        _, father_latent = image2latent(father_aligned)
-        _, mother_latent = image2latent(mother_aligned)
+        def paralel_tolatent(tpl):
+            (i, aligned_image) = tpl
+            os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+            os.environ["CUDA_VISIBLE_DEVICES"] = str(i)
+            # config.Gs_network
+            _, aligned_latent = image2latent(aligned_image)
+            return aligned_latent
+
+        print("starting latent extraction")
+        father_latent, mother_latent = list(map(paralel_tolatent, list(enumerate([father_aligned, mother_aligned]))))
+        print("end latent extraction")
+        # _, father_latent = image2latent(father_aligned)
+        # _, mother_latent = image2latent(mother_aligned)
 
         if specific != '':
             with open(cache_path, 'wb') as handle:

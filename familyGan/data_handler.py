@@ -114,6 +114,7 @@ class dataHandler:
         os.system(f"{script_path} {config.aligned_path} {config.generated_path} {config.latent_path}")
 
     def latent2image(self, latent_vector):
+        config.init_generator()
         latent_vector = latent_vector.reshape((1, 18, 512))
         config.generator.set_dlatents(latent_vector)
         img_array = config.generator.generate_images()[0]

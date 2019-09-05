@@ -21,10 +21,14 @@ URL_FFHQ = 'https://drive.google.com/uc?id=1MEGjdvVpUsu1jB4zrXZN7Y4kBBOzizDQ'
 
 synthesis_kwargs = dict(output_transform=dict(func=tflib.convert_images_to_uint8, nchw_to_nhwc=True), minibatch_size=8)
 
-tflib.init_tf()
-with dnnlib.util.open_url(URL_FFHQ, cache_dir=config.cache_dir) as f:
-    generator_network, discriminator_network, Gs_network = pickle.load(f)
-generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
+
+def init_generator():
+    global generator_network, discriminator_network, Gs_network, generator
+    if generator is None:
+        tflib.init_tf()
+        with dnnlib.util.open_url(URL_FFHQ, cache_dir=config.cache_dir) as f:
+            generator_network, discriminator_network, Gs_network = pickle.load(f)
+        generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
 
 
 landmarks_model_path = unpack_bz2(get_file('shape_predictor_68_face_landmarks.dat.bz2',
