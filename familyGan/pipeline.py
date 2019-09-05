@@ -1,4 +1,6 @@
 import os
+import random
+import string
 from os.path import join
 import numpy as np
 from PIL import Image
@@ -10,6 +12,7 @@ from familyGan.stylegan_encoder.ffhq_dataset.face_alignment import image_align_f
 from familyGan.stylegan_encoder.encoder.generator_model import Generator
 from familyGan.models.simple_avarage import SimpleAverageModel
 
+coef = -2
 
 def align_image(img):
     face_landmarks = config.landmarks_detector.get_landmarks_from_image(np.array(img))
@@ -34,8 +37,9 @@ def image2latent(img, iterations=1000):
 
 
 def predict(father_latent, mother_latent):
-    model = SimpleAverageModel(coef=-2)
+    model = SimpleAverageModel(coef=coef)
     child_latent = model.predict(father_latent, mother_latent)
+
     return child_latent
 
 
@@ -73,9 +77,28 @@ def full_pipe(father, mother, specific=''):
 
     return child
 
+def integrate_with_web(path_father, path_mother):
+    def randomString(stringLength=10):
+        """Generate a random string of fixed length """
+        letters = string.ascii_lowercase
+        return ''.join(random.choice(letters) for _ in range(stringLength))
+
+    father = Image.open(path_father)
+    mother = Image.open(path_mother)
+
+    child = full_pipe(father, mother)
+
+    parent_path = os.path.dirname(path_father)
+    random_string = randomString(30)
+    child_path = join(parent_path, random_string + '.png')
+    child.save(child_path)
+    return child_path
+
+
 
 if __name__ == '__main__':
+    specific = 'uriel'
     father = Image.open('/data/home/morpheus/repositories/familyGan/custom_data/uriel.png')
     mother = Image.open('/data/home/morpheus/repositories/familyGan/custom_data/hodaya.png')
-    child = full_pipe(father, mother, specific='uriel')
-    child.save('/data/home/morpheus/repositories/familyGan/custom_data/child.png')
+    child = full_pipe(father, mother, specific=specific)
+    child.save(f'/data/home/morpheus/repositories/familyGan/custom_data/{specific}_child_coef{str(coef)}.png')
