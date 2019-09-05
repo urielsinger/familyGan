@@ -30,7 +30,7 @@ def _disable_all_for_pictures(p):
     return p
 
 
-def _save_pkl_images_to_local_path(pkl_folder_path) -> (list, list, list):
+def _save_pkl_images_to_local_path(pkl_folder_path, ex_num=None) -> (list, list, list):
     """
     :param pkl_folder_path: path with triplet pickle files
     :return: Returns (father_img_paths, mother_img_paths, child_img_paths) with local paths for bokeh
@@ -38,7 +38,10 @@ def _save_pkl_images_to_local_path(pkl_folder_path) -> (list, list, list):
     # Save folders in curr folder for bokeh access
     os.makedirs("pics/", exist_ok=True)
     father_img_paths, mother_img_paths, child_img_paths = [], [], []
-    for i, filep in enumerate(tqdm(get_files_from_path(pkl_folder_path), desc="loading family photos:")):
+    for i, filep in enumerate(tqdm(get_files_from_path(pkl_folder_path), desc="loading family photos:", total=ex_num)):
+        if ex_num is not None and i == ex_num:
+            break
+
         with open(filep, 'rb') as f:
             (father_image, father_latent_f), (mother_image, mother_latent_f), (child_image, child_latent_f) = pkl.load(
                 f)
@@ -55,24 +58,30 @@ def _save_pkl_images_to_local_path(pkl_folder_path) -> (list, list, list):
 
     return father_img_paths, mother_img_paths, child_img_paths
 
-def _save_pred_images_to_local_path(pkl_folder_path, predictions_folder_path) -> list:
+
+def _save_pred_images_to_local_path(pkl_folder_path, predictions_folder_path, ex_num=None) -> (list, list):
     """
     :param pkl_folder_path: path with models prediction folders
-    :return: Returns (father_img_paths, mother_img_paths, child_img_paths) with local paths for bokeh
+    :param predictions_folder_path: folder path containing the prediction pkls
+
+    :return: Returns path lists for all models in the folder, with empty images for no pred.
+            + model names (folder names)
     """
     model_names = [o for o in os.listdir(predictions_folder_path) if os.path.isdir(os.path.join(predictions_folder_path, o))]
 
-    models_predictions_path_list = [[]] * len(model_names)
+    models_predictions_path_list = [[] for i in range(len(model_names))]
 
     # Save folders in curr folder for bokeh access
     os.makedirs("pics/", exist_ok=True)
-    for i, filep in enumerate(tqdm(get_files_from_path(pkl_folder_path), desc="loading pred photos:")):
+    for i, filep in enumerate(tqdm(get_files_from_path(pkl_folder_path), desc="loading pred photos:", total=ex_num)):
+        if ex_num is not None and i == ex_num:
+            break
+
         fname = os.path.basename(filep)
 
         for j, model_name in enumerate(model_names):
             model_ex_path = f"{predictions_folder_path}/{model_name}/{fname}"
             if os.path.exists(model_ex_path):
-                print(model_ex_path)
                 with open(model_ex_path, 'rb') as f:
                     (model_pred_child_img, model_pred_child_latent_f) = pkl.load(f)
             else:
@@ -82,7 +91,8 @@ def _save_pred_images_to_local_path(pkl_folder_path, predictions_folder_path) ->
             model_pred_child_img.save(model_pred_local_p)
             models_predictions_path_list[j].append(model_pred_local_p)
 
-    return models_predictions_path_list
+    print([len(l) for l in models_predictions_path_list])
+    return models_predictions_path_list, model_names
 
 
 def family_view_with_slider(pkl_folder_path):
@@ -113,7 +123,6 @@ def family_view_with_slider(pkl_folder_path):
         plots.append(p)
         sources.append(source)
 
-
     update_source_str = """
     
         var data = source{i}.data;    
@@ -141,7 +150,7 @@ def family_view_with_slider(pkl_folder_path):
     show(layout)
 
 
-def family_view_with_slider_and_predictions(pkl_folder_path, predictions_folder_path):
+def family_view_with_slider_and_predictions(pkl_folder_path, predictions_folder_path, ex_num=None):
     """
     View interactively with bokeh a family album of all the triplets
     and the predictions from all the models
@@ -149,7 +158,8 @@ def family_view_with_slider_and_predictions(pkl_folder_path, predictions_folder_
     :param predictions_folder_path: folder path containing the prediction pkls
     """
 
-    father_img_paths, mother_img_paths, child_img_paths = _save_pkl_images_to_local_path(pkl_folder_path)
+    father_img_paths, mother_img_paths, child_img_paths = _save_pkl_images_to_local_path(pkl_folder_path,
+                                                                                         ex_num=ex_num)
     n = len(father_img_paths)
 
     # the plotting code
@@ -177,10 +187,13 @@ def family_view_with_slider_and_predictions(pkl_folder_path, predictions_folder_
 
     # model prediction plots
     pred_plots = []
-    model_names = [o for o in os.listdir(predictions_folder_path) if os.path.isdir(os.path.join(predictions_folder_path, o))]
 
-    all_models_picture_paths = _save_pred_images_to_local_path(pkl_folder_path, predictions_folder_path)
+    all_models_picture_paths, model_names = _save_pred_images_to_local_path(pkl_folder_path, predictions_folder_path,
+                                                                            ex_num=ex_num)
     pred_plot_num = len(model_names)
+
+    n = len(father_img_paths)
+
 
     for i, model_name in enumerate(model_names):
         p = figure(height=300, width=300, title=model_name)

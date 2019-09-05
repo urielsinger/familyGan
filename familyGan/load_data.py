@@ -11,7 +11,7 @@ import config
 from auto_tqdm import tqdm
 
 
-def get_files_from_path(pathstring, filetype:str='pkl') -> List[str]:
+def get_files_from_path(pathstring, filetype: str = 'pkl') -> List[str]:
     """
     Retrives file names from the folder and returns all pickle paths
 
@@ -82,7 +82,7 @@ def load_data_for_training(pkl_folder_path, gender_filter=None) -> (np.array, np
     X_fathers_list, X_mothers_list, y_child_list, file_list = [], [], [], []
     X_fathers, X_mothers, y_child = None, None, None
 
-    for filep in tqdm(get_files_from_path(pkl_folder_path,'pkl')):
+    for filep in tqdm(get_files_from_path(pkl_folder_path, 'pkl')):
         if gender_filter is not None and os.path.basename(filep)[2] != gender_filter:
             continue
         with open(filep, 'rb') as f:
@@ -138,9 +138,22 @@ def load_false_triplets(X_fathers, X_mothers, y_child, example_amount) -> (np.ar
     for i in range(example_amount):
         new_i = i
         while new_i == i:
-            new_i = random.randint(0, ex_num-1)
+            new_i = random.randint(0, ex_num - 1)
 
         y_child_perm_list.append(y_child[new_i, ::])
     y_child_perm = np.stack(y_child_perm_list)
 
     return X_fathers[:example_amount, ::], X_mothers[:example_amount, ::], y_child_perm
+
+
+def load_family_triplet_pkls(pkl_folder_path, ex_num=None):
+    triplet_pkls = []
+    for i, filep in enumerate(tqdm(get_files_from_path(pkl_folder_path), desc="loading family photos:", total=ex_num)):
+        if ex_num is not None and i == ex_num:
+            break
+        with open(filep, 'rb') as f:
+            triplet_pkls.append(pkl.load(f))
+        # (father_image, father_latent_f), (mother_image, mother_latent_f), (child_image, child_latent_f) = pkl.load(
+        # f)
+
+    return triplet_pkls
