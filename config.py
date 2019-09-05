@@ -15,7 +15,7 @@ sys.modules['tflib'] = tflib
 from familyGan.stylegan_encoder.encoder.generator_model import Generator
 
 FAMILYGAN_DIR_PATH = os.path.dirname(__file__)
-DATA_DIR_PATH = f'{os.path.dirname(os.path.dirname(FAMILYGAN_DIR_PATH))}/familyGan_data/TSKinFace_Data'
+DATA_DIR_PATH = '/mnt/familyGan_data/TSKinFace_Data'
 
 URL_FFHQ = 'https://drive.google.com/uc?id=1MEGjdvVpUsu1jB4zrXZN7Y4kBBOzizDQ'
 
