@@ -13,6 +13,6 @@ class SimpleAverageModel(BasicFamilyReg):
         pass
 
     def predict(self, X_fathers, X_mothers):
-        y_pred_old = np.mean([X_fathers, X_mothers], axis=-1)
+        y_pred_old = np.mean([X_fathers, X_mothers], axis=0)
         y_pred_young = y_pred_old + self.coef * self.direction
         return y_pred_young

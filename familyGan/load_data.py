@@ -45,7 +45,7 @@ def verify_files_exist(aligned_path, latent_path, parent_fname):
 def merge_stylegan_outputs_to_triplet_pickles(aligned_path=config.aligned_path,
                                               latent_path=config.latent_path):
     print("starting merge from folders")
-    for filep in tqdm(get_files_from_path(latent_path)):
+    for filep in tqdm(get_files_from_path(latent_path, filetype='npy')):
 
         fname = os.path.basename(filep)
 
@@ -82,7 +82,7 @@ def load_data_for_training(pkl_folder_path, gender_filter=None) -> (np.array, np
     X_fathers_list, X_mothers_list, y_child_list, file_list = [], [], [], []
     X_fathers, X_mothers, y_child = None, None, None
 
-    for filep in tqdm(get_files_from_path(pkl_folder_path)):
+    for filep in tqdm(get_files_from_path(pkl_folder_path,'pkl')):
         if gender_filter is not None and os.path.basename(filep)[2] != gender_filter:
             continue
         with open(filep, 'rb') as f:

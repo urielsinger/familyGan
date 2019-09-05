@@ -6,9 +6,10 @@ from os.path import join as pjoin
 from familyGan.data_handler import dataHandler
 from familyGan.models.simple_avarage import SimpleAverageModel
 import logging
+import os
 
 gender_filter = None # None, FEMALE, MALE
-model_config = dict(coef = 1)
+model_config = dict(coef = -2)
 latent_model = SimpleAverageModel(**model_config)
 data_handler = dataHandler()
 logger = logging.getLogger("train")
@@ -34,12 +35,16 @@ if __name__ == '__main__':
     for child_latent in y_hat_children:
         children_fake.append(data_handler.latent2image(child_latent))
 
-    # TODO: save name of file to 'tmp_fake/model/'
     assert len(file_list) == len(children_fake)
+    fake_path = pjoin(OUTPUT_FAKE_PATH, latent_model.__class__.__name__)
+    if not os.path.isdir(OUTPUT_FAKE_PATH):
+        os.mkdir(OUTPUT_FAKE_PATH+'/')
+    if not os.path.isdir(fake_path):
+        os.mkdir(fake_path+'/')
     for k, fakefile in enumerate(file_list):
-        fake_path = pjoin(OUTPUT_FAKE_PATH,latent_model.__class__.__name__,fakefile)
-        with open(fake_path, 'wb') as f:
-            pickle.dump( (children_fake[k], y_hat_children[k]) )
+        fake_filepath = pjoin(fake_path, os.path.basename(fakefile))
+        with open(fake_filepath, 'wb') as f:
+            pickle.dump( (children_fake[k], y_hat_children[k]), f )
 
     # endregion
 
