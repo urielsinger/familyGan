@@ -3,7 +3,7 @@ import numpy as np
 import config
 
 
-class SimpleRegressor(BasicFamilyReg):
+class SimpleAverageModel(BasicFamilyReg):
     def __init__(self, direction=config.age_kid_direction, coef=1, **kwargs):
         super().__init__(**kwargs)
         self.direction = direction
