@@ -43,7 +43,7 @@ $( document ).ready(function() {
               },
               success:function(data){
                   console.log(data)
-                  console.log("upload success")
+                  location.href = data;
               }
       })
     });
