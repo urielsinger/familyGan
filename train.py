@@ -37,9 +37,9 @@ if __name__ == '__main__':
 
     assert len(file_list) == len(children_fake)
     fake_path = pjoin(OUTPUT_FAKE_PATH, latent_model.__class__.__name__)
-    if os.path.isdir(OUTPUT_FAKE_PATH):
+    if not os.path.isdir(OUTPUT_FAKE_PATH):
         os.mkdir(OUTPUT_FAKE_PATH+'/')
-    if os.path.isdir(fake_path):
+    if not os.path.isdir(fake_path):
         os.mkdir(fake_path+'/')
     for k, fakefile in enumerate(file_list):
         fake_filepath = pjoin(fake_path, os.path.basename(fakefile))
