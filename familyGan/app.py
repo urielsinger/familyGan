@@ -3,7 +3,7 @@ import io
 import base64
 import os
 from werkzeug import secure_filename
-#from pipeline import integrate_with_web
+from pipeline import integrate_with_web
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'upload_files'
@@ -51,18 +51,18 @@ def upload_file():
         image1 = request.files['image1']
         image2 = request.files['image2']
         if image1 and allowed_file(image1.filename) and image2 and allowed_file(image2.filename):
-            father_path = os.path.join(app.config['UPLOAD_FOLDER'], image1.filename)
-            mother_path = os.path.join(app.config['UPLOAD_FOLDER'], image2.filename)
+            father_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),app.config['UPLOAD_FOLDER'], image1.filename)
+            mother_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),app.config['UPLOAD_FOLDER'], image2.filename)
 
             image1.save(father_path)
             image2.save(mother_path)
 
             child_image_name = integrate_with_web(father_path,mother_path)
 
-            return redirect(url_for('get_image',img_name=child_image_name))
+            return child_image_name
         else:
             return 'File not allowed'
     return False
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=8080)
