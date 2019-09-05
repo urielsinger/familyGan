@@ -1,0 +1,81 @@
+import os
+from os.path import join
+import numpy as np
+from PIL import Image
+import pickle
+
+import config
+from familyGan.stylegan_encoder.encoder.perceptual_model import PerceptualModel
+from familyGan.stylegan_encoder.ffhq_dataset.face_alignment import image_align_from_image
+from familyGan.stylegan_encoder.encoder.generator_model import Generator
+from familyGan.models.simple_avarage import SimpleAverageModel
+
+
+def align_image(img):
+    face_landmarks = config.landmarks_detector.get_landmarks_from_image(np.array(img))
+    aligned_img = image_align_from_image(img, face_landmarks)
+    return aligned_img.resize((256, 256))
+
+
+def image2latent(img, iterations=1000):
+    generator = Generator(config.Gs_network, 1)
+    perceptual_model = PerceptualModel(256)
+    perceptual_model.build_perceptual_model(generator.generated_image)
+
+    perceptual_model.set_reference_images_from_image(np.array([np.array(img)]))
+    op = perceptual_model.optimize(generator.dlatent_variable, iterations=iterations)
+    for iteration in range(iterations):
+        next(op)
+
+    generated_img = generator.generate_images()[0]
+    latent = generator.get_dlatents()[0]
+
+    return generated_img, latent
+
+
+def predict(father_latent, mother_latent):
+    model = SimpleAverageModel(coef=-2)
+    child_latent = model.predict(father_latent, mother_latent)
+    return child_latent
+
+
+def latent2image(latent):
+    latent = latent.reshape((1, 18, 512))
+    config.generator.set_dlatents(latent)
+    img_array = config.generator.generate_images()[0]
+    img = Image.fromarray(img_array, 'RGB')
+    return img.resize((256, 256))
+
+
+def full_pipe(father, mother, specific=''):
+    cache_path = join(config.FAMILYGAN_DIR_PATH, 'custom_data', specific)
+    if specific != '' and os.path.exists(cache_path):
+        with open(cache_path, 'rb') as handle:
+            father_latent, mother_latent = pickle.load(handle)
+    else:
+        # align
+        father_aligned = align_image(father)
+        mother_aligned = align_image(mother)
+
+        # to latent
+        _, father_latent = image2latent(father_aligned)
+        _, mother_latent = image2latent(mother_aligned)
+
+        if specific != '':
+            with open(cache_path, 'wb') as handle:
+                pickle.dump((father_latent, mother_latent), handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    # model
+    child_latent = predict(father_latent, mother_latent)
+
+    # to image
+    child = latent2image(child_latent)
+
+    return child
+
+
+if __name__ == '__main__':
+    father = Image.open('/data/home/morpheus/repositories/familyGan/custom_data/uriel.png')
+    mother = Image.open('/data/home/morpheus/repositories/familyGan/custom_data/hodaya.png')
+    child = full_pipe(father, mother, specific='uriel')
+    child.save('/data/home/morpheus/repositories/familyGan/custom_data/child.png')

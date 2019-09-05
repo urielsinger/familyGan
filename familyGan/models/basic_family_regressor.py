@@ -10,4 +10,4 @@ class BasicFamilyReg(BaseEstimator):
 
     def add_random_gender(self, y_pred):
         coefs = np.random.choice([2, -2], size=len(y_pred))
-        return y_pred + coefs[:, np.newaxis, np.newaxis] * config.gender_direction[np.newaxis, :, :]
+        return y_pred.to('cpu').numpy() + coefs[:, np.newaxis, np.newaxis] * config.gender_direction[np.newaxis, :, :]
