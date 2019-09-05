@@ -56,7 +56,7 @@ def merge_stylegan_outputs_to_triplet_pickles(aligned_path=config.aligned_path, 
         mother_fname_no_type = f"{family_con}-{ex_num}-M_{child_num}"
         mother_img, mother_latent_f = load_aligned_image_latent(mother_fname_no_type, aligned_path, latent_path)
 
-        triplet_pkl_fname = f"{family_con}-{ex_num}-{child_num}.pkl"
+        triplet_pkl_fname = f"{family_con}-{ex_num}-{child_type}_{child_num}.pkl"
         with open(f"{config.pkls_path}/{triplet_pkl_fname}", 'wb') as f:
             pkl.dump(((father_img, father_latent_f), (mother_img, mother_latent_f), (child_img, child_latent_f)), f)
     print("done merge from folders")
