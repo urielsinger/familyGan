@@ -41,7 +41,7 @@ class RegressorAndDirection(BasicFamilyReg):
         X_mothers = np2torch(X_mothers)
         with torch.no_grad():
             y_pred = self.model(X_fathers, X_mothers)
-        y_pred = y_pred + self.coef * config.age_kid_direction
+        y_pred = y_pred + self.coef * np2torch(config.age_kid_direction)
         return self.add_random_gender(y_pred)
 
 
@@ -49,15 +49,15 @@ class ChildNet(nn.Module):
     def __init__(self, latent_size=18 * 512):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.father_weights = torch.nn.Parameter(torch.randn(2, latent_size))
-        self.mother_weights = torch.nn.Parameter(torch.randn(2, latent_size))
+        self.father_weights = torch.nn.Parameter(torch.randn(2, 1, latent_size))
+        self.mother_weights = torch.nn.Parameter(torch.randn(2, 1, latent_size))
         self.register_parameter('father_params', self.father_weights)
         self.register_parameter('mother_params', self.mother_weights)
 
     def forward(self, *input):
         X_fathers, X_mothers = input
-        X_fathers_moved = X_fathers.flatten(1, 2) * self.father_weights[0, :] + self.father_weights[1, :]
-        X_mothers_moved = X_mothers.flatten(1, 2) * self.mother_weights[0, :] + self.mother_weights[1, :]
+        X_fathers_moved = X_fathers.flatten(1, 2) * self.father_weights[0] + self.father_weights[1]
+        X_mothers_moved = X_mothers.flatten(1, 2) * self.mother_weights[0] + self.mother_weights[1]
 
         y_pred = torch.mean(torch.stack([X_fathers_moved, X_mothers_moved]), axis=0)
         y_pred = y_pred.reshape(X_fathers.shape)
