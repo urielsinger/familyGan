@@ -89,9 +89,12 @@ def load_data_for_training(pkl_folder_path, gender_filter=None) -> (np.array, np
 def load_false_triplets(X_fathers, X_mothers, y_child, example_amount) -> (np.array, np.array, np.array):
     """
     Expects output from load_data_for_training
+
+    returns new children for existing fathers,mothers (in the same order)
     """
     y_child_perm_list = []
     ex_num = y_child.shape[0]
+    assert example_amount <= ex_num, "load_false expect a smaller number than the number of triplets"
     for i in range(example_amount):
         new_i = i
         while new_i == i:
@@ -100,4 +103,4 @@ def load_false_triplets(X_fathers, X_mothers, y_child, example_amount) -> (np.ar
         y_child_perm_list.append(y_child[new_i, ::])
     y_child_perm = np.stack(y_child_perm_list)
 
-    return X_fathers, X_mothers, y_child_perm
+    return X_fathers[:example_amount, ::], X_mothers[:example_amount, ::], y_child_perm
