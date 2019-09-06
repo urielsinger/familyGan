@@ -15,6 +15,7 @@ import dnnlib
 import dnnlib.tflib as tflib
 import config
 
+
 def main():
     # Initialize TensorFlow.
     tflib.init_tf()

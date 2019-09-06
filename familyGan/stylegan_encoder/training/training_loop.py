@@ -14,7 +14,7 @@ import dnnlib
 import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
 
-import config
+from familyGan import config
 import train
 from training import dataset
 from training import misc

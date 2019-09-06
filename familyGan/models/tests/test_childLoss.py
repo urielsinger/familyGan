@@ -1,7 +1,6 @@
 from unittest import TestCase
 import numpy as np
 
-import config
 from familyGan.models.regressor_and_direction import ChildLoss, np2torch
 
 

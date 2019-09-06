@@ -2,17 +2,13 @@ import pickle
 
 from sklearn.model_selection import train_test_split
 
-import config
-from config import EMBEDDING_PATH, MALE, FEMALE, OUTPUT_FAKE_PATH
-from familyGan.load_data import merge_stylegan_outputs_to_triplet_pickles, load_data_for_training
+from config import EMBEDDING_PATH, OUTPUT_FAKE_PATH
+from load_data import merge_stylegan_outputs_to_triplet_pickles, load_data_for_training
 from os.path import join as pjoin
-from familyGan.data_handler import dataHandler
-from familyGan.models.regressor_and_direction import RegressorAndDirection
-from familyGan.models.simple_avarage import SimpleAverageModel
+from data_handler import dataHandler
+from models.simple_avarage import SimpleAverageModel
 import logging
 import os
-
-from familyGan.models.translator import Translator
 
 gender_filter = None  # None, FEMALE, MALE
 

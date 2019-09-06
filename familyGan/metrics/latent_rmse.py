@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 from PIL import Image
 
-from familyGan.metrics.base_metric import Metric
+from metrics.base_metric import Metric
 
 
 class RMSE(Metric):

@@ -1,12 +1,10 @@
-import random
-
 import torch
 from scipy.linalg import orth
 from torch.nn.modules.loss import _Loss, MSELoss
 from torch.optim import Adam
 
 import config
-from familyGan.models.basic_family_regressor import BasicFamilyReg
+from models.basic_family_regressor import BasicFamilyReg
 import numpy as np
 from torch import nn
 

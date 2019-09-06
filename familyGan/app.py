@@ -1,8 +1,6 @@
 from flask import *
-import io
 import base64
 import os
-from werkzeug import secure_filename
 from pipeline import integrate_with_web
 app = Flask(__name__)
 

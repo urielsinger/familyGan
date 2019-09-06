@@ -16,7 +16,7 @@ from collections import defaultdict
 import PIL.Image
 import dnnlib
 
-import config
+from familyGan import config
 from training import dataset
 
 #----------------------------------------------------------------------------

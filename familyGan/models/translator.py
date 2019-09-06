@@ -1,12 +1,8 @@
-import random
-
 import torch
-from torch.nn.modules.loss import _Loss, MSELoss
+from torch.nn.modules.loss import MSELoss
 from torch.optim import Adam
 
-import config
-from familyGan.models.basic_family_regressor import BasicFamilyReg
-import numpy as np
+from models.basic_family_regressor import BasicFamilyReg
 from torch import nn
 
 

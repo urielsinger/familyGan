@@ -1,4 +1,4 @@
-from config import EMBEDDING_PATH
+from familyGan.config import EMBEDDING_PATH
 from familyGan.load_data import merge_stylegan_outputs_to_triplet_pickles, load_data_for_training
 from os.path import join as pjoin
 
