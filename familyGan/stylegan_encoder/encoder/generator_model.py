@@ -1,3 +1,5 @@
+from typing import Optional
+
 import tensorflow as tf
 import numpy as np
 import stylegan_encoder.dnnlib.tflib as tflib
@@ -9,6 +11,7 @@ def create_stub(name, batch_size):
 
 
 def create_variable_for_generator(name, batch_size):
+    # TODO: change random normal to meaningful initialization
     return tf.get_variable('learnable_dlatents',
                            shape=(batch_size, 18, 512),
                            dtype='float32',
@@ -16,10 +19,12 @@ def create_variable_for_generator(name, batch_size):
 
 
 class Generator:
-    def __init__(self, model, batch_size, randomize_noise=False):
+    def __init__(self, model, batch_size, randomize_noise=False, init_dlatent:Optional[np.ndarray] = None):
         self.batch_size = batch_size
 
-        self.initial_dlatents = np.zeros((self.batch_size, 18, 512))
+        # TODO: change random normal to meaningful initialization.
+        # FIXME: They are reseted for now
+        self.initial_dlatents = np.zeros((self.batch_size, 18, 512)) if init_dlatent is None else np.tile(init_dlatent[None,:,:],(self.batch_size,1,1))
         model.components.synthesis.run(self.initial_dlatents,
                                        randomize_noise=randomize_noise, minibatch_size=self.batch_size,
                                        custom_inputs=[partial(create_variable_for_generator, batch_size=batch_size),

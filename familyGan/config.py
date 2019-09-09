@@ -1,4 +1,6 @@
 import os
+from typing import Optional
+
 import numpy as np
 import pickle
 from stylegan_encoder import dnnlib
@@ -22,19 +24,20 @@ URL_FFHQ = 'https://drive.google.com/uc?id=1MEGjdvVpUsu1jB4zrXZN7Y4kBBOzizDQ'
 synthesis_kwargs = dict(output_transform=dict(func=tflib.convert_images_to_uint8, nchw_to_nhwc=True), minibatch_size=8)
 
 generator_network, discriminator_network, Gs_network, generator = None, None, None, None
-def init_generator():
+
+
+def init_generator(init_dlatent:Optional[np.ndarray]=None):
     global generator_network, discriminator_network, Gs_network, generator
     if generator is None:
         tflib.init_tf()
         with dnnlib.util.open_url(URL_FFHQ, cache_dir=config.cache_dir) as f:
             generator_network, discriminator_network, Gs_network = pickle.load(f)
-        generator = Generator(Gs_network, batch_size=1, randomize_noise=False)
+        generator = Generator(Gs_network, batch_size=1, randomize_noise=False, init_dlatent=init_dlatent)
 
 
 landmarks_model_path = unpack_bz2(get_file('shape_predictor_68_face_landmarks.dat.bz2',
-                                               LANDMARKS_MODEL_URL, cache_subdir='temp'))
+                                           LANDMARKS_MODEL_URL, cache_subdir='temp'))
 landmarks_detector = LandmarksDetector(landmarks_model_path)
-
 
 direction_path = os.path.join(FAMILYGAN_DIR_PATH, 'stylegan_encoder', 'trained_directions')
 gender_direction = np.load('{}/gender_direction.npy'.format(direction_path))

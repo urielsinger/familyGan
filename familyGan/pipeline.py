@@ -2,10 +2,13 @@ import os
 import random
 import string
 from os.path import join
+from typing import Optional
+
 import numpy as np
 from PIL import Image
 import pickle
 os.environ['TF_ENABLE_AUTO_MIXED_PRECISION'] = '1'
+from auto_tqdm import tqdm
 import config
 from multiproc_util import parmap
 from stylegan_encoder.encoder.perceptual_model import PerceptualModel
@@ -21,16 +24,19 @@ def align_image(img):
     return aligned_img.resize((256, 256))
 
 
-def image2latent(img, iterations=750):
-    config.init_generator()
+def image2latent(img, iterations=750, learning_rate = 1., init_dlatent:Optional[np.ndarray]=None):
+    config.init_generator(init_dlatent=init_dlatent)
     generator = Generator(config.Gs_network, 1)
     perceptual_model = PerceptualModel(256)
     perceptual_model.build_perceptual_model(generator.generated_image)
 
     perceptual_model.set_reference_images_from_image(np.array([np.array(img)]))
-    op = perceptual_model.optimize(generator.dlatent_variable, iterations=iterations)
-    for iteration in range(iterations):
-        next(op)
+    op = perceptual_model.optimize(generator.dlatent_variable, iterations=iterations, learning_rate=learning_rate)
+    with tqdm(total = iterations) as pbar:
+        for iteration in range(iterations):
+            loss = next(op)
+            pbar.set_description('Loss: %.2f' % loss)
+            pbar.update()
 
     generated_img = generator.generate_images()[0]
     latent = generator.get_dlatents()[0]
