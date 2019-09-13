@@ -1,5 +1,6 @@
 name: familyGan
 channels:
+- pytorch
 - h2oai
 - conda-forge
 - defaults
@@ -13,10 +14,12 @@ dependencies:
 - pip
 - scikit-learn
 - scikit-image
-- h2o  # install via conda install -c h2oai h2o
+- h2o
 
 # Deep Learning
 - cudatoolkit
+- pytorch=1.1.0
+- torchvision
 
 # Visualizations
 - bokeh
@@ -37,4 +40,7 @@ dependencies:
     - tqdm
     - tb-nightly  # for tensorboard
     - tensorflow-gpu
-    - pathos
+    - keras
+    - dlib
+    - pathos  # for running parallel map
+    - auto_tqdm
