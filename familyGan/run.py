@@ -7,7 +7,7 @@ import time
 from stylegan_encoder.training.misc import save_pkl, load_pkl
 
 ITER = 450
-LR = 4.
+LR = 2.  # not used ATM, uses on in perceptual_model.py
 EXPERIMENT_NAME = f"init_iter_{ITER}_lr_{LR}"
 IM_PATH = "../data/toy_face.jpg"
 RESULTS_PATH = "../results"

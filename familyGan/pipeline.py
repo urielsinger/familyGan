@@ -33,11 +33,10 @@ def image2latent(img, iterations=750, learning_rate = 1., init_dlatent:Optional[
     perceptual_model.set_reference_images_from_image(np.array([np.array(img)]))
     op = perceptual_model.optimize(generator.dlatent_variable, iterations=iterations, learning_rate=learning_rate)
     with tqdm(total = iterations) as pbar:
-        for iteration in range(iterations):
-            loss = next(op)
+        for iteration, loss in enumerate(op):
             pbar.set_description('Loss: %.2f' % loss)
             pbar.update()
-
+    print(f"final loss {loss}")
     generated_img = generator.generate_images()[0]
     latent = generator.get_dlatents()[0]
 
