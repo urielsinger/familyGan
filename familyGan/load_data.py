@@ -52,6 +52,10 @@ def merge_stylegan_outputs_to_triplet_pickles(aligned_path=config.aligned_path,
         fname_no_type = fname[:-4]
         family_con, ex_num, end = fname_no_type.split('-')
         child_type, child_num = end.split('_')
+        triplet_pkl_fname = f"{family_con}-{ex_num}-{child_type}_{child_num}.pkl"
+        triplet_pkl_fname_path = f"{config.pkls_path}{triplet_pkl_fname}"
+        if os.path.exists(triplet_pkl_fname):
+            continue  # already merged
 
         if child_type == "F" or child_type == "M":
             continue  # do not go over father/mothers 
@@ -69,8 +73,7 @@ def merge_stylegan_outputs_to_triplet_pickles(aligned_path=config.aligned_path,
         father_img, father_latent_f = load_aligned_image_latent(father_fname_no_type, aligned_path, latent_path)
         mother_img, mother_latent_f = load_aligned_image_latent(mother_fname_no_type, aligned_path, latent_path)
 
-        triplet_pkl_fname = f"{family_con}-{ex_num}-{child_type}_{child_num}.pkl"
-        with open(f"{config.pkls_path}{triplet_pkl_fname}", 'wb') as f:
+        with open(triplet_pkl_fname_path, 'wb') as f:
             pkl.dump(((father_img, father_latent_f), (mother_img, mother_latent_f), (child_img, child_latent_f)), f)
     print("done merge from folders")
     return config.pkls_path
