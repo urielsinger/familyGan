@@ -2,7 +2,7 @@ import torch
 from torch.nn.modules.loss import MSELoss
 from torch.optim import Adam
 
-from models.basic_family_regressor import BasicFamilyReg
+from familyGan.models.basic_family_regressor import BasicFamilyReg
 from torch import nn
 
 

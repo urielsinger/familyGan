@@ -6,7 +6,7 @@ from config import EMBEDDING_PATH, OUTPUT_FAKE_PATH
 from load_data import merge_stylegan_outputs_to_triplet_pickles, load_data_for_training
 from os.path import join as pjoin
 from data_handler import dataHandler
-from models.simple_avarage import SimpleAverageModel
+from familyGan.models.simple_avarage import SimpleAverageModel
 import logging
 import os
 

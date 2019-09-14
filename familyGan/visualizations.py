@@ -61,15 +61,15 @@ def _save_pkl_images_to_local_path(pkl_folder_path, ex_num=None) -> (list, list,
 
 def _save_pred_images_to_local_path(pkl_folder_path, predictions_folder_path, ex_num=None) -> (list, list):
     """
-    :param pkl_folder_path: path with models prediction folders
+    :param pkl_folder_path: path with familyGan.models prediction folders
     :param predictions_folder_path: folder path containing the prediction pkls
 
-    :return: Returns path lists for all models in the folder, with empty images for no pred.
+    :return: Returns path lists for all familyGan.models in the folder, with empty images for no pred.
             + model names (folder names)
     """
     model_names = [o for o in os.listdir(predictions_folder_path) if os.path.isdir(os.path.join(predictions_folder_path, o))]
 
-    models_predictions_path_list = [[] for i in range(len(model_names))]
+    familyGan.models_predictions_path_list = [[] for i in range(len(model_names))]
 
     # Save folders in curr folder for bokeh access
     os.makedirs("pics/", exist_ok=True)
@@ -89,10 +89,10 @@ def _save_pred_images_to_local_path(pkl_folder_path, predictions_folder_path, ex
 
             model_pred_local_p = f'pics/{i}-pred-{model_name}.png'
             model_pred_child_img.save(model_pred_local_p)
-            models_predictions_path_list[j].append(model_pred_local_p)
+            familyGan.models_predictions_path_list[j].append(model_pred_local_p)
 
-    print([len(l) for l in models_predictions_path_list])
-    return models_predictions_path_list, model_names
+    print([len(l) for l in familyGan.models_predictions_path_list])
+    return familyGan.models_predictions_path_list, model_names
 
 
 def family_view_with_slider(pkl_folder_path):
@@ -161,7 +161,7 @@ def family_view_with_slider(pkl_folder_path):
 def family_view_with_slider_and_predictions(pkl_folder_path, predictions_folder_path, ex_num=None):
     """
     View interactively with bokeh a family album of all the triplets
-    and the predictions from all the models
+    and the predictions from all the familyGan.models
     :param pkl_folder_path: pkl folder path containing all the family triplets
     :param predictions_folder_path: folder path containing the prediction pkls
     """

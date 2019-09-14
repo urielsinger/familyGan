@@ -30,7 +30,7 @@ def align_image(img):
 
 def image2latent(img, iterations=750, learning_rate=1.,
                  init_dlatent: Optional[np.ndarray] = None) -> Tuple[np.ndarray, np.ndarray]:
-    generated_img_list, latent_list = image_list2latent([img], iterations, learning_rate, init_dlatent)
+    generated_img_list, latent_list = image_list2latent([img, img], iterations, learning_rate, init_dlatent)
 
     return generated_img_list[0], latent_list[0]
 
@@ -41,8 +41,8 @@ def image_list2latent(img_list, iterations=750, learning_rate=1.,
     :return: sizes of (batch_size, img_height, img_width, 3), (batch_size, 18, 512)
     """
     config.init_generator(init_dlatent=init_dlatent)
-    generator = config.generator  # TODO: maybe
-    # generator = Generator(config.Gs_network, batch_size=2)
+    # generator = config.generator  # TODO: messes with parallel
+    generator = Generator(config.Gs_network, batch_size=2)
     generator.reset_dlatents()
     perceptual_model = PerceptualModel(256, batch_size=2)
     perceptual_model.build_perceptual_model(generator.generated_image)
@@ -67,14 +67,14 @@ def predict(father_latent, mother_latent):
     return child_latent
 
 
-def latent2image(latent) -> Image.Image:
-    latent = latent.reshape((1, 18, 512))
-    return latent_list2image_list([latent])[0]
+def latent2image(latent: np.ndarray) -> Image.Image:
+    latent = np.array([latent, latent])
+    return latent_list2image_list(latent)[0]
 
 
-def latent_list2image_list(latent_list) -> List[Image.Image]:
+def latent_list2image_list(latent_arr: np.ndarray) -> List[Image.Image]:
     config.init_generator()
-    config.generator.set_dlatents(latent_list)
+    config.generator.set_dlatents(latent_arr)
     img_arrays = config.generator.generate_images()
     img_list = [Image.fromarray(im, 'RGB').resize((256, 256)) for im in img_arrays]
     return img_list
@@ -85,9 +85,12 @@ def full_pipe(father, mother):
     father_hash = hash(tuple(np.array(father).flatten()))
     mother_hash = hash(tuple(np.array(mother).flatten()))
 
-    cache_path = join(config.FAMILYGAN_DIR_PATH, 'cache', 'latent_space')
-    with open(cache_path, 'rb') as handle:
-        image2latent_cache = pickle.load(handle)
+    cache_path = join(config.FAMILYGAN_DIR_PATH, 'cache', 'latent_space_cache.pkl')
+    if os.path.exists(cache_path):
+        with open(cache_path, 'rb') as handle:
+            image2latent_cache = pickle.load(handle)
+    else:
+        image2latent_cache = dict()
 
     if father_hash in image2latent_cache:
         father_latent = image2latent_cache[father_hash]
@@ -110,10 +113,10 @@ def full_pipe(father, mother):
         father_latent, mother_latent = list(parmap(parallel_tolatent, list(enumerate([father_aligned, mother_aligned]))))
     elif father_latent is not None and mother_latent is None:
         mother_aligned = align_image(mother)
-        mother_latent = list(parmap(parallel_tolatent, list(enumerate([mother_aligned]))))
+        mother_latent = list(parmap(parallel_tolatent, list(enumerate([mother_aligned]))))[0]
     elif father_latent is None and mother_latent is not None:
         father_aligned = align_image(father)
-        father_latent = list(parmap(parallel_tolatent, list(enumerate([father_aligned]))))
+        father_latent = list(parmap(parallel_tolatent, list(enumerate([father_aligned]))))[0]
     print("end latent extraction")
     # _, father_latent = image2latent(father_aligned)
     # _, mother_latent = image2latent(mother_aligned)
@@ -125,7 +128,7 @@ def full_pipe(father, mother):
         pickle.dump(image2latent_cache, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     # model
-    child_latent = predict(father_latent, mother_latent)
+    child_latent = predict(father_latent, mother_latent)[0]  # to 18,512
 
     # to image
     child = latent2image(child_latent)

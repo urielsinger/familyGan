@@ -1,11 +1,11 @@
 from flask import *
 import base64
 import os
-from pipeline import integrate_with_web
+from familyGan.pipeline import integrate_with_web
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'upload_files'
-ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 

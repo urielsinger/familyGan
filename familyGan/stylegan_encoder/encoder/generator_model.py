@@ -2,7 +2,7 @@ from typing import Optional
 
 import tensorflow as tf
 import numpy as np
-import stylegan_encoder.dnnlib.tflib as tflib
+import familyGan.stylegan_encoder.dnnlib.tflib as tflib
 from functools import partial
 
 
@@ -45,6 +45,7 @@ class Generator:
         self.set_dlatents(self.initial_dlatents)
 
     def set_dlatents(self, dlatents):
+        print(dlatents.shape, (self.batch_size, 18, 512))
         assert (dlatents.shape == (self.batch_size, 18, 512))
         self.sess.run(tf.assign(self.dlatent_variable, dlatents))
 
