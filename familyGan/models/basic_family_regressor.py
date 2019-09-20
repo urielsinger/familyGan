@@ -2,7 +2,7 @@ import torch
 from sklearn.base import BaseEstimator
 import numpy as np
 
-import config
+from familyGan import config
 
 
 class BasicFamilyReg(BaseEstimator):
