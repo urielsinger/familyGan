@@ -21,9 +21,10 @@ dependencies:
 - pytorch=1.1.0
 - torchvision
 
-# Visualizations
+# Visualizations / web serving
 - bokeh
 - holoviews
+- flask
 
 # Jupyter Environment
 - autopep8

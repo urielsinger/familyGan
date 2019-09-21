@@ -40,11 +40,12 @@ def image_list2latent(img_list, iterations=750, learning_rate=1.,
     """
     :return: sizes of (batch_size, img_height, img_width, 3), (batch_size, 18, 512)
     """
-    config.init_generator(init_dlatent=init_dlatent)
+    batch_size = len(img_list)
+    config.init_generator(init_dlatent=init_dlatent, batch_size=batch_size)
     # generator = config.generator  # TODO: messes with parallel
-    generator = Generator(config.Gs_network, batch_size=2)
+    generator = Generator(config.Gs_network, batch_size=batch_size)
     generator.reset_dlatents()
-    perceptual_model = PerceptualModel(256, batch_size=2)
+    perceptual_model = PerceptualModel(256, batch_size=batch_size)
     perceptual_model.build_perceptual_model(generator.generated_image)
 
     perceptual_model.set_reference_images_from_image(np.array([np.array(im) for im in img_list]))
@@ -73,7 +74,8 @@ def latent2image(latent: np.ndarray) -> Image.Image:
 
 
 def latent_list2image_list(latent_arr: np.ndarray) -> List[Image.Image]:
-    config.init_generator()
+    batch_size = len(latent_arr)
+    config.init_generator(batch_size=batch_size)
     config.generator.set_dlatents(latent_arr)
     img_arrays = config.generator.generate_images()
     img_list = [Image.fromarray(im, 'RGB').resize((256, 256)) for im in img_arrays]

@@ -40,5 +40,5 @@ def run_2_images():
         im_hat.save(pjoin(RESULTS_PATH, f'{round(end - start, 3)}_sec_{EXPERIMENT_NAME}_{i}.png'))
 
 if __name__ == '__main__':
-    for i in range(3):
+    for i in range(1):
         run_2_images()

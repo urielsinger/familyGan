@@ -28,14 +28,14 @@ synthesis_kwargs = dict(output_transform=dict(func=tflib.convert_images_to_uint8
 generator, Gs_network = None, None
 
 
-def init_generator(init_dlatent:Optional[np.ndarray]=None):
+def init_generator(init_dlatent:Optional[np.ndarray]=None, batch_size=1):
     global generator, Gs_network
     if generator is None:
         tflib.init_tf()
         with dnnlib.util.open_url(URL_FFHQ, cache_dir=config.cache_dir) as f:
             generator_network, discriminator_network, Gs_network = pickle.load(f)
             del discriminator_network, generator_network
-        generator = Generator(Gs_network, batch_size=2, randomize_noise=False, init_dlatent=init_dlatent)
+        generator = Generator(Gs_network, batch_size=batch_size, randomize_noise=False, init_dlatent=init_dlatent)
 
 
 landmarks_model_path = unpack_bz2(get_file('shape_predictor_68_face_landmarks.dat.bz2',
