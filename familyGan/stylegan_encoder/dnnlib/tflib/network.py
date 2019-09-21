@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
 #
 # This work is licensed under the Creative Commons Attribution-NonCommercial
 # 4.0 International License. To view a copy of this license, visit
@@ -329,6 +329,36 @@ class Network:
         names = [name for name in self.trainables.keys() if name in src_net.trainables]
         tfutil.set_vars(tfutil.run({self.vars[name]: src_net.vars[name] for name in names}))
 
+    def copy_compatible_trainables_from(self, src_net: "Network") -> None:
+        """Copy the compatible values of all trainable variables from the given network, including sub-networks"""
+        names = []
+        for name in self.trainables.keys():
+            if name not in src_net.trainables:
+                print("Not restoring (not present):     {}".format(name))
+            elif self.trainables[name].shape != src_net.trainables[name].shape:
+                print("Not restoring (different shape): {}".format(name))
+
+            if name in src_net.trainables and self.trainables[name].shape == src_net.trainables[name].shape:
+                names.append(name)
+
+        tfutil.set_vars(tfutil.run({self.vars[name]: src_net.vars[name] for name in names}))
+
+    def apply_swa(self, src_net, epoch):
+        """Perform stochastic weight averaging on the compatible values of all trainable variables from the given network, including sub-networks"""
+        names = []
+        for name in self.trainables.keys():
+            if name not in src_net.trainables:
+                print("Not restoring (not present):     {}".format(name))
+            elif self.trainables[name].shape != src_net.trainables[name].shape:
+                print("Not restoring (different shape): {}".format(name))
+
+            if name in src_net.trainables and self.trainables[name].shape == src_net.trainables[name].shape:
+                names.append(name)
+
+        scale_new_data = 1.0 / (epoch + 1)
+        scale_moving_average = (1.0 - scale_new_data)
+        tfutil.set_vars(tfutil.run({self.vars[name]: (src_net.vars[name] * scale_new_data + self.vars[name] * scale_moving_average) for name in names}))
+
     def convert(self, new_func_name: str, new_name: str = None, **new_static_kwargs) -> "Network":
         """Create new network with the given parameters, and copy all variables from this network."""
         if new_name is None:
@@ -519,7 +549,7 @@ class Network:
 
         for layer_name, layer_output, layer_trainables in self.list_layers():
             num_params = sum(np.prod(tfutil.shape_to_list(var.shape)) for var in layer_trainables)
-            weights = [var for var in layer_trainables if var.name.endswith("/weight:0")]
+            weights = [var for var in layer_trainables if var.name.endswith("/weight:0") or var.name.endswith("/weight_1:0")]
             weights.sort(key=lambda x: len(x.name))
             if len(weights) == 0 and len(layer_trainables) == 1:
                 weights = layer_trainables

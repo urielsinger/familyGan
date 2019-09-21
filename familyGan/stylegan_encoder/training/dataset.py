@@ -11,8 +11,8 @@ import os
 import glob
 import numpy as np
 import tensorflow as tf
-import dnnlib
-import dnnlib.tflib as tflib
+import familyGan.stylegan_encoder.dnnlib
+import familyGan.stylegan_encoder.dnnlib.tflib as tflib
 
 #----------------------------------------------------------------------------
 # Parse individual image from a tfrecords file.
@@ -231,7 +231,7 @@ def load_dataset(class_name='training.dataset.TFRecordDataset', data_dir=None, v
         adjusted_kwargs['tfrecord_dir'] = os.path.join(data_dir, adjusted_kwargs['tfrecord_dir'])
     if verbose:
         print('Streaming data using %s...' % class_name)
-    dataset = dnnlib.util.get_obj_by_name(class_name)(**adjusted_kwargs)
+    dataset = familyGan.stylegan_encoder.dnnlib.util.get_obj_by_name(class_name)(**adjusted_kwargs)
     if verbose:
         print('Dataset shape =', np.int32(dataset.shape).tolist())
         print('Dynamic range =', dataset.dynamic_range)

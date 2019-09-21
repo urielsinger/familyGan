@@ -1,19 +1,264 @@
-
-
-I just trained the latent directions of most facial features from the Puzer's dataset and made a notebook with sliders to easily change parameters.
-
-Some features are obviously biased, like facial hair (male bias) or makeup (female bias)-
-
-![Sliders](./sliders.JPG)
-
-### Original Readme:
-
 ## StyleGAN &mdash; Encoder for Official TensorFlow Implementation
 ![Python 3.6](https://img.shields.io/badge/python-3.6-green.svg?style=plastic)
 ![TensorFlow 1.10](https://img.shields.io/badge/tensorflow-1.10-green.svg?style=plastic)
 ![cuDNN 7.3.1](https://img.shields.io/badge/cudnn-7.3.1-green.svg?style=plastic)
 ![License CC BY-NC](https://img.shields.io/badge/license-CC_BY--NC-green.svg?style=plastic)
 
+*This is my StyleGAN Encoder; there are many like it, but this one is mine. Thanks to @Puzer for the original, of which this is a fork, and to @SimJeg for the initial code that formed the basis of the ResNet model used here, and to @Pender for his fork as well!*
+
+![Example image](./mona_example.jpg)
+
+From left to right: original image, predicted image from a ResNet trained on generated StyleGAN faces, and the final encoded image.
+
+What I've added:
+
+1) The ResNet encoder - train your own with *train_resnet.py* or [download my pre-trained model](https://drive.google.com/open?id=1aT59NFy9-bNyXjDuZOTMl0qX0jmZc6Zb)! Put the model in data/finetuned_resnet.h5
+2) Drop-in replacement to use an EfficientNet based encoder with *train_effnet.py* - thanks to @qubvel for [his Keras implementation of EfficientNets](https://github.com/qubvel/efficientnet/)! Install from source to get the latest version.
+3) More loss functions for the iterative encoder to improve convergence speed and face quality.
+ * Original VGG loss is still present.
+ * Added image loss using logcosh.
+ * Added MS-SIM loss.
+ * Added LPIPS loss (pretrained model included with StyleGAN)
+ * Added L1 penalty on dlatents - this keeps the representation closer to StyleGAN's concept of faces.
+4) Added support for generating **videos** of the encoding process!
+5) Added learning rate decay, stochastic gradient clipping, and tiled dlatents from @Pender's StyleGAN encoder fork.
+6) Adding experimental support for FP16 and [TreeConnect](https://github.com/OliverRichter/TreeConnect).
+7) Added support for masking and autogenerating face masks
+8) Merged support for conditional generation from @davidstap [StyleGAN fork](https://github.com/davidstap/stylegan)
+9) Added support for stochastic weight averaging of StyleGAN checkpoints
+10) A [tutorial notebook](https://github.com/pbaylies/stylegan-encoder/blob/master/StyleGAN_Encoder_Tutorial.ipynb)!
+11) Follow @Puzer's instructions below for encoder usage as well, all of that still applies!
+
+```
+usage: encode_images.py [-h] [--data_dir DATA_DIR] [--mask_dir MASK_DIR]
+                        [--load_last LOAD_LAST] [--dlatent_avg DLATENT_AVG]
+                        [--model_url MODEL_URL] [--model_res MODEL_RES]
+                        [--batch_size BATCH_SIZE] [--image_size IMAGE_SIZE]
+                        [--resnet_image_size RESNET_IMAGE_SIZE] [--lr LR]
+                        [--decay_rate DECAY_RATE] [--iterations ITERATIONS]
+                        [--decay_steps DECAY_STEPS]
+                        [--load_effnet LOAD_EFFNET]
+                        [--load_resnet LOAD_RESNET]
+                        [--use_vgg_loss USE_VGG_LOSS]
+                        [--use_vgg_layer USE_VGG_LAYER]
+                        [--use_pixel_loss USE_PIXEL_LOSS]
+                        [--use_mssim_loss USE_MSSIM_LOSS]
+                        [--use_lpips_loss USE_LPIPS_LOSS]
+                        [--use_l1_penalty USE_L1_PENALTY]
+                        [--randomize_noise RANDOMIZE_NOISE]
+                        [--tile_dlatents TILE_DLATENTS]
+                        [--clipping_threshold CLIPPING_THRESHOLD]
+                        [--load_mask LOAD_MASK] [--face_mask FACE_MASK]
+                        [--use_grabcut USE_GRABCUT] [--scale_mask SCALE_MASK]
+                        [--video_dir VIDEO_DIR] [--output_video OUTPUT_VIDEO]
+                        [--video_codec VIDEO_CODEC]
+                        [--video_frame_rate VIDEO_FRAME_RATE]
+                        [--video_size VIDEO_SIZE] [--video_skip VIDEO_SKIP]
+                        src_dir generated_images_dir dlatent_dir
+
+Find latent representation of reference images using perceptual losses
+
+positional arguments:
+  src_dir               Directory with images for encoding
+  generated_images_dir  Directory for storing generated images
+  dlatent_dir           Directory for storing dlatent representations
+
+optional arguments:
+  -h, --help                              show this help message and exit
+  --data_dir DATA_DIR                     Directory for storing optional models (default: data)
+  --load_last LOAD_LAST                   Start with embeddings from directory (default: )
+  --model_url MODEL_URL                   Fetch a StyleGAN model to train on from this URL
+                                (default: https://drive.google.com/uc?id=1MEGjdvVpUsu1jB4zrXZN7Y4kBBOzizDQ)
+  --model_res MODEL_RES                   The dimension of images in the StyleGAN model (default: 1024)
+  --batch_size BATCH_SIZE                 Batch size for generator and perceptual model (default: 1)
+  --image_size IMAGE_SIZE                 Size of images for perceptual model (default: 256)
+  --resnet_image_size RESNET_IMAGE_SIZE   Size of images for the Resnet model (default: 256)                        
+  --lr LR                                 Learning rate for perceptual model (default: 0.02)
+  --decay_rate DECAY_RATE                 Decay rate for learning rate (default: 0.9)
+  --iterations ITERATIONS                 Number of optimization steps for each batch (default: 100)
+  --decay_steps DECAY_STEPS               Decay steps for learning rate decay (as a percent of iterations) (default: 10)
+  --load_resnet LOAD_RESNET               Model to load for Resnet approximation of dlatents
+                                (default: data/finetuned_resnet.h5)
+  --use_vgg_loss USE_VGG_LOSS             Use VGG perceptual loss; 0 to disable, > 0 to scale. (default: 0.4)
+  --use_vgg_layer USE_VGG_LAYER           Pick which VGG layer to use. (default: 9)
+  --use_pixel_loss USE_PIXEL_LOSS         Use logcosh image pixel loss; 0 to disable, > 0 to scale. (default: 1.5)
+  --use_mssim_loss USE_MSSIM_LOSS         Use MS-SIM perceptual loss; 0 to disable, > 0 to scale. (default: 100)
+  --use_lpips_loss USE_LPIPS_LOSS         Use LPIPS perceptual loss; 0 to disable, > 0 to scale. (default: 100)
+  --use_l1_penalty USE_L1_PENALTY         Use L1 penalty on latents; 0 to disable, > 0 to scale. (default: 1)
+  --randomize_noise RANDOMIZE_NOISE       Add noise to dlatents during optimization (default: False)
+  --tile_dlatents TILE_DLATENTS           Tile dlatents to use a single vector at each scale (default: False)
+  --clipping_threshold CLIPPING_THRESHOLD Stochastic clipping of gradient values outside of this threshold (default: 2.0)
+  --load_mask LOAD_MASK Load segmentation masks (default: False)
+  --face_mask FACE_MASK Generate a mask for predicting only the face area (default: False)
+  --use_grabcut USE_GRABCUT Use grabcut algorithm on the face mask to better segment the foreground (default: True)
+  --scale_mask SCALE_MASK Look over a wider section of foreground for grabcut (default: 1.5)
+  --video_dir VIDEO_DIR                   Directory for storing training videos (default: videos)
+  --output_video OUTPUT_VIDEO             Generate videos of the optimization process (default: False)
+  --video_codec VIDEO_CODEC               FOURCC-supported video codec name (default: MJPG)
+  --video_frame_rate VIDEO_FRAME_RATE     Video frames per second (default: 24)
+  --video_size VIDEO_SIZE                 Video size in pixels (default: 512)
+  --video_skip VIDEO_SKIP                 Only write every n frames (1 = write every frame) (default: 1)
+```
+---
+```
+usage: train_effnet.py [-h] [--model_url MODEL_URL] [--model_res MODEL_RES]
+                       [--data_dir DATA_DIR] [--model_path MODEL_PATH]
+                       [--model_depth MODEL_DEPTH] [--model_size MODEL_SIZE]
+                       [--use_ktrain USE_KTRAIN]
+                       [--ktrain_max_lr KTRAIN_MAX_LR]
+                       [--ktrain_reduce_lr KTRAIN_REDUCE_LR]
+                       [--ktrain_stop_early KTRAIN_STOP_EARLY]
+                       [--activation ACTIVATION] [--optimizer OPTIMIZER]
+                       [--loss LOSS] [--use_fp16 USE_FP16]
+                       [--image_size IMAGE_SIZE] [--batch_size BATCH_SIZE]
+                       [--test_size TEST_SIZE] [--truncation TRUNCATION]
+                       [--fancy_truncation FANCY_TRUNCATION]
+                       [--max_patience MAX_PATIENCE]
+                       [--freeze_first FREEZE_FIRST] [--epochs EPOCHS]
+                       [--minibatch_size MINIBATCH_SIZE] [--seed SEED]
+                       [--loop LOOP]
+
+Train an EfficientNet to predict latent representations of images in a
+StyleGAN model from generated examples
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --model_url MODEL_URL
+                        Fetch a StyleGAN model to train on from this URL
+                        (default: https://drive.google.com/uc?id=1MEGjdvVpUsu1jB4zrXZN7Y4kBBOzizDQ)
+  --model_res MODEL_RES
+                        The dimension of images in the StyleGAN model (default: 1024)
+  --data_dir DATA_DIR   Directory for storing the EfficientNet model (default: data)
+  --model_path MODEL_PATH
+                        Save / load / create the EfficientNet model with this file path (default: data/finetuned_effnet.h5)
+  --model_depth MODEL_DEPTH
+                        Number of TreeConnect layers to add after EfficientNet (default: 1)
+  --model_size MODEL_SIZE
+                        Model size - 0 - small, 1 - medium, 2 - large, or 3 - full size. (default: 1)
+  --use_ktrain USE_KTRAIN
+                        Use ktrain for training (default: False)
+  --ktrain_max_lr KTRAIN_MAX_LR
+                        Maximum learning rate for ktrain (default: 0.001)
+  --ktrain_reduce_lr KTRAIN_REDUCE_LR
+                        Patience for reducing learning rate after a plateau
+                        for ktrain (default: 1)
+  --ktrain_stop_early KTRAIN_STOP_EARLY
+                        Patience for early stopping for ktrain (default: 3)
+  --activation ACTIVATION
+                        Activation function to use after EfficientNet (default: elu)
+  --optimizer OPTIMIZER Optimizer to use (default: adam)
+  --loss LOSS           Loss function to use (default: logcosh)
+  --use_fp16 USE_FP16   Use 16-bit floating point (default: False)
+  --image_size IMAGE_SIZE
+                        Size of images for EfficientNet model (default: 256)
+  --batch_size BATCH_SIZE
+                        Batch size for training the EfficientNet model (default: 2048)
+  --test_size TEST_SIZE
+                        Batch size for testing the EfficientNet model (default: 512)
+  --truncation TRUNCATION
+                        Generate images using truncation trick (default: 0.7)
+  --fancy_truncation FANCY_TRUNCATION
+                        Use fancier truncation proposed by @oneiroid (default: True)
+  --max_patience MAX_PATIENCE
+                        Number of iterations to wait while test loss does not improve (default: 2)
+  --freeze_first FREEZE_FIRST
+                        Start training with the pre-trained network frozen, then unfreeze (default: False)
+  --epochs EPOCHS       Number of training epochs to run for each batch (default: 2)
+  --minibatch_size MINIBATCH_SIZE
+                        Size of minibatches for training and generation (default: 16)
+  --seed SEED           Pick a random seed for reproducibility (-1 for no random seed selected) (default: -1)
+  --loop LOOP           Run this many iterations (-1 for infinite, halt with CTRL-C) (default: -1)
+```
+---
+```
+usage: train_resnet.py [-h] [--model_url MODEL_URL] [--model_res MODEL_RES]
+                       [--data_dir DATA_DIR] [--model_path MODEL_PATH]
+                       [--model_depth MODEL_DEPTH] [--model_size MODEL_SIZE]
+                       [--activation ACTIVATION] [--use_fp16 USE_FP16]
+                       [--image_size IMAGE_SIZE] [--batch_size BATCH_SIZE]
+                       [--test_size TEST_SIZE] [--max_patience MAX_PATIENCE]
+                       [--freeze_first FREEZE_FIRST] [--epochs EPOCHS]
+                       [--minibatch_size MINIBATCH_SIZE] [--seed SEED]
+                       [--loop LOOP]
+
+Train a ResNet to predict latent representations of images in a StyleGAN model
+from generated examples
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --model_url MODEL_URL
+                        Fetch a StyleGAN model to train on from this URL
+                        (default: https://drive.google.com/uc?id=1MEGjdvVpUsu1jB4zrXZN7Y4kBBOzizDQ)
+  --model_res MODEL_RES
+                        The dimension of images in the StyleGAN model (default: 1024)
+  --data_dir DATA_DIR   Directory for storing the ResNet model (default: data)
+  --model_path MODEL_PATH
+                        Save / load / create the ResNet model with this file path (default: data/finetuned_resnet.h5)
+  --use_fp16 USE_FP16   Use 16-bit floating point (default: False)
+  --model_depth MODEL_DEPTH
+                        Number of TreeConnect layers to add after ResNet (default: 1)
+  --model_size MODEL_SIZE
+                        Model size - 0 - small, 1 - medium, 2 - large. (default: 0)
+  --activation ACTIVATION
+                        Activation function to use after ResNet (default: elu)
+  --image_size IMAGE_SIZE
+                        Size of images for ResNet model (default: 256)
+  --batch_size BATCH_SIZE
+                        Batch size for training the ResNet model (default: 2048)
+  --test_size TEST_SIZE
+                        Batch size for testing the ResNet model (default: 512)
+  --max_patience MAX_PATIENCE
+                        Number of iterations to wait while test loss does not improve (default: 2)
+  --freeze_first FREEZE_FIRST
+                        Start training with the pre-trained network frozen, then unfreeze (default: False)
+  --epochs EPOCHS       Number of training epochs to run for each batch (default: 2)
+  --minibatch_size MINIBATCH_SIZE
+                        Size of minibatches for training and generation (default: 16)
+  --seed SEED           Pick a random seed for reproducibility (-1 for no random seed selected) (default: -1)
+  --loop LOOP           Run this many iterations (-1 for infinite, halt with CTRL-C) (default: -1)
+```
+---
+```
+usage: swa.py [-h] [--filespec FILESPEC] [--output_model OUTPUT_MODEL]
+              [--count COUNT]
+              results_dir
+
+Perform stochastic weight averaging
+
+positional arguments:
+  results_dir           Directory with network checkpoints for weight
+                        averaging
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --filespec FILESPEC   The files to average (default: network*.pkl)
+  --output_model OUTPUT_MODEL
+                        The averaged model to output (default:
+                        network_avg.pkl)
+  --count COUNT         Average the last n checkpoints (default: 6)
+```
+---
+```
+usage: align_images.py [-h] [--output_size OUTPUT_SIZE] [--x_scale X_SCALE]
+                       [--y_scale Y_SCALE] [--em_scale EM_SCALE]
+                       raw_dir aligned_dir
+
+Align faces from input images
+
+positional arguments:
+  raw_dir               Directory with raw images for face alignment
+  aligned_dir           Directory for storing aligned images
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --output_size OUTPUT_SIZE
+                        The dimension of images for input to the model
+                        (default: 1024)
+  --x_scale X_SCALE     Scaling factor for x dimension (default: 1)
+  --y_scale Y_SCALE     Scaling factor for y dimension (default: 1)
+  --em_scale EM_SCALE   Scaling factor for eye-mouth distance (default: 0.1)
+```
+---
 ![Teaser image](./teaser.png)
 
 *These people are real &ndash; latent representation of them was found by using perceptual loss trick. Then this representations were moved along "smiling direction" and transformed back into images*
@@ -44,7 +289,7 @@ Feel free to join the research. There is still much room for improvement:
 
 Stay tuned!
 
-### Original Original Readme:
+### Original Readme:
 This repository contains (no longer) official TensorFlow implementation of the following paper:
 
 

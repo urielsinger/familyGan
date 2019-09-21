@@ -8,8 +8,8 @@
 """Loss functions."""
 
 import tensorflow as tf
-import dnnlib.tflib as tflib
-from dnnlib.tflib.autosummary import autosummary
+import familyGan.stylegan_encoder.dnnlib.tflib as tflib
+from familyGan.stylegan_encoder.dnnlib.tflib.autosummary import autosummary
 
 #----------------------------------------------------------------------------
 # Convenience func that casts all of its arguments to tf.float32.

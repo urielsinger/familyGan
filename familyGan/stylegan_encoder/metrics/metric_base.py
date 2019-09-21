@@ -12,12 +12,12 @@ import time
 import hashlib
 import numpy as np
 import tensorflow as tf
-import dnnlib
-import dnnlib.tflib as tflib
+import familyGan.stylegan_encoder.dnnlib as dnnlib
+import familyGan.stylegan_encoder.dnnlib.tflib as tflib
 
-import config
-from training import misc
-from training import dataset
+import familyGan.stylegan_encoder.config as config
+from familyGan.stylegan_encoder.training import misc
+from familyGan.stylegan_encoder.training import dataset
 
 #----------------------------------------------------------------------------
 # Standard metrics.

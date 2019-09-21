@@ -8,11 +8,11 @@
 """Main entry point for training StyleGAN and ProGAN networks."""
 
 import copy
-import dnnlib
-from dnnlib import EasyDict
+import familyGan.stylegan_encoder.dnnlib as dnnlib
+from familyGan.stylegan_encoder.dnnlib import EasyDict
 
-import config
-from metrics import metric_base
+import familyGan.stylegan_encoder.config as config
+from familyGan.stylegan_encoder.metrics import metric_base
 
 #----------------------------------------------------------------------------
 # Official training configs for StyleGAN, targeted mainly for FFHQ.
@@ -35,6 +35,9 @@ if 1:
 
     # Dataset.
     desc += '-ffhq';     dataset = EasyDict(tfrecord_dir='ffhq');              train.mirror_augment = True
+    # desc += '-cub';     dataset = EasyDict(tfrecord_dir='CUB');             train.mirror_augment = True
+    # desc += 'celebahq-binary';     dataset = EasyDict(tfrecord_dir='celebahq-binary', resolution=256);      train.mirror_augment = True
+    #desc += 'coco_train';          dataset = EasyDict(tfrecord_dir='coco_train', resolution=256);           train.mirror_augment = True
     #desc += '-celebahq'; dataset = EasyDict(tfrecord_dir='celebahq');          train.mirror_augment = True
     #desc += '-bedroom';  dataset = EasyDict(tfrecord_dir='lsun-bedroom-full'); train.mirror_augment = False
     #desc += '-car';      dataset = EasyDict(tfrecord_dir='lsun-car-512x384');  train.mirror_augment = False
@@ -45,6 +48,12 @@ if 1:
     #desc += '-2gpu'; submit_config.num_gpus = 2; sched.minibatch_base = 8; sched.minibatch_dict = {4: 256, 8: 256, 16: 128, 32: 64, 64: 32, 128: 16, 256: 8}
     #desc += '-4gpu'; submit_config.num_gpus = 4; sched.minibatch_base = 16; sched.minibatch_dict = {4: 512, 8: 256, 16: 128, 32: 64, 64: 32, 128: 16}
     desc += '-8gpu'; submit_config.num_gpus = 8; sched.minibatch_base = 32; sched.minibatch_dict = {4: 512, 8: 256, 16: 128, 32: 64, 64: 32}
+
+    # Class conditioning
+    # desc += '-cond'; dataset.max_label_size = 'full' # conditioned on full label
+    # desc += '-cond1'; dataset.max_label_size = 128 # conditioned on first component of the label
+
+    #desc += '-fp16'; G.dtype = 'float16'; D.dtype = 'float16'; G.epsilon=1e-4; G_opt.use_loss_scaling = True; D_opt.use_loss_scaling = True; sched.max_minibatch_per_gpu = {512: 16, 1024: 8}
 
     # Default options.
     train.total_kimg = 25000
