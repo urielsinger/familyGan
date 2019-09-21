@@ -7,8 +7,9 @@ from typing import List
 import PIL
 import numpy as np
 
-import config
 from auto_tqdm import tqdm
+
+from familyGan import config
 
 
 def get_files_from_path(pathstring, filetype: str = 'pkl') -> List[str]:

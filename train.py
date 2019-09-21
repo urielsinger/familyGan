@@ -2,10 +2,10 @@ import pickle
 
 from sklearn.model_selection import train_test_split
 
-from config import EMBEDDING_PATH, OUTPUT_FAKE_PATH
-from load_data import merge_stylegan_outputs_to_triplet_pickles, load_data_for_training
+from familyGan.config import EMBEDDING_PATH, OUTPUT_FAKE_PATH
+from familyGan.load_data import merge_stylegan_outputs_to_triplet_pickles, load_data_for_training
 from os.path import join as pjoin
-from data_handler import dataHandler
+from familyGan.data_handler import dataHandler
 from familyGan.models.simple_avarage import SimpleAverageModel
 import logging
 import os
@@ -19,7 +19,7 @@ latent_model = SimpleAverageModel(**model_config)
 # latent_model = RegressorAndDirection(**model_config)
 
 data_handler = dataHandler()
-TEST_RATIO = 0.000001
+TEST_RATIO = 0.3
 logger = logging.getLogger("train")
 
 if __name__ == '__main__':

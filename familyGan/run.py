@@ -39,6 +39,7 @@ def run_2_images():
     for i, im_hat in enumerate(im_hat_list):
         im_hat.save(pjoin(RESULTS_PATH, f'{round(end - start, 3)}_sec_{EXPERIMENT_NAME}_{i}.png'))
 
+
 if __name__ == '__main__':
     for i in range(1):
         run_2_images()

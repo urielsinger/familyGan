@@ -34,7 +34,7 @@ class PerceptualModel:
 
     def build_perceptual_model(self, generated_image_tensor):
         self.optimizer = tf.train.AdamOptimizer(learning_rate=0.05,
-                                           beta1=0.5,#
+                                           beta1=0.5,
                                            beta2=0.5,
                                            epsilon=1e-8,)
         # self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.1)
@@ -106,7 +106,7 @@ class PerceptualModel:
 
     def optimize(self, vars_to_optimize, iterations=500, learning_rate=1.):
         vars_to_optimize = vars_to_optimize if isinstance(vars_to_optimize, list) else [vars_to_optimize]
-        self.optimizer._learning_rate = learning_rate  # for SGD optimizer
+        # self.optimizer._learning_rate = learning_rate  # for SGD optimizer
         # self.optimizer._lr = learning_rate  # for adam, etc
         # self.optimizer._final_lr = learning_rate * 0.3333333  # for adabound
 
@@ -121,9 +121,10 @@ class PerceptualModel:
             _, loss = self.sess.run([min_op, self.loss])
             if last_loss is not None and abs(last_loss - loss) < delta:
                 no_change_counter += 1
-                if no_change_counter > stop_count and loss < 0.62:
+                if no_change_counter > stop_count and loss < 0.6:
                     print("early stopping")
                     break
             else:
+                no_change_counter = 0
                 last_loss = loss
             yield loss
