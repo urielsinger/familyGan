@@ -15,9 +15,10 @@ is run inside the docker container.
 import os
 import pickle
 import sys
+import familyGan.stylegan_encoder.dnnlib as dnnlib
 
 # PYTHONPATH should have been set so that the run_dir/src is in it
-import dnnlib
+import familyGan.stylegan_encoder.dnnlib
 
 def main():
     if not len(sys.argv) >= 4:

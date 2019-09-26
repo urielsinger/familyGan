@@ -14,9 +14,9 @@ import re
 import numpy as np
 from collections import defaultdict
 import PIL.Image
-from familyGan.stylegan_encoder import dnnlib
+import familyGan.stylegan_encoder.dnnlib as dnnlib
 
-from familyGan import config
+import familyGan.stylegan_encoder.config as config
 from familyGan.stylegan_encoder.training import dataset
 
 #----------------------------------------------------------------------------
@@ -118,6 +118,14 @@ def list_network_pkls(run_id_or_run_dir, include_final=True):
             pkls.append(pkls[0])
         del pkls[0]
     return pkls
+
+def locate_latest_pkl():
+    allpickles = sorted(glob.glob(os.path.join(config.result_dir, '0*', 'network-*.pkl')))
+    latest_pickle = allpickles[-1]
+    resume_run_id = os.path.basename(os.path.dirname(latest_pickle))
+    RE_KIMG = re.compile('network-snapshot-(\d+).pkl')
+    kimg = int(RE_KIMG.match(os.path.basename(latest_pickle)).group(1))
+    return (locate_network_pkl(resume_run_id), float(kimg))
 
 def locate_network_pkl(run_id_or_run_dir_or_network_pkl, snapshot_or_network_pkl=None):
     for candidate in [snapshot_or_network_pkl, run_id_or_run_dir_or_network_pkl]:

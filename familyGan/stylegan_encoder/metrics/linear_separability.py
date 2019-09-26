@@ -11,10 +11,10 @@ from collections import defaultdict
 import numpy as np
 import sklearn.svm
 import tensorflow as tf
-import dnnlib.tflib as tflib
+import familyGan.stylegan_encoder.dnnlib.tflib as tflib
 
-from metrics import metric_base
-from training import misc
+from familyGan.stylegan_encoder.metrics import metric_base
+from familyGan.stylegan_encoder.training import misc
 
 #----------------------------------------------------------------------------
 

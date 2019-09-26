@@ -11,8 +11,8 @@ import os
 import glob
 import numpy as np
 import tensorflow as tf
-import dnnlib
-import dnnlib.tflib as tflib
+import familyGan.stylegan_encoder.dnnlib as dnnlib
+import familyGan.stylegan_encoder.dnnlib.tflib as tflib
 
 #----------------------------------------------------------------------------
 # Parse individual image from a tfrecords file.
