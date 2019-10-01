@@ -13,34 +13,36 @@ def create_stub(name, batch_size):
 
 def create_variable_for_generator(name, batch_size, tiled_dlatent, model_scale=18):
     if tiled_dlatent:
+        # with tf.variable_scope("learnable_dlatents", reuse=tf.AUTO_REUSE) as scope:
         low_dim_dlatent = tf.get_variable('learnable_dlatents',
             shape=(batch_size, 512),
             dtype='float32',
             initializer=tf.initializers.random_normal())
         return tf.tile(tf.expand_dims(low_dim_dlatent, axis=1), [1, model_scale, 1])
     else:
-        return tf.get_variable('learnable_dlatents',
-            shape=(batch_size, model_scale, 512),
-            dtype='float32',
-            initializer=tf.initializers.random_normal())
+        # with tf.variable_scope("learnable_dlatents", reuse=tf.AUTO_REUSE) as scope:
+        learnable_dlatents = tf.get_variable('learnable_dlatents',
+                        shape=(batch_size, model_scale, 512),
+                        dtype='float32',
+                        initializer=tf.initializers.random_normal())
+        return learnable_dlatents
 
 
 class Generator:
-    def __init__(self, model, batch_size, clipping_threshold=2, tiled_dlatent=False, model_res=1024, randomize_noise=False, init_dlatent:Optional[np.ndarray] = None):
+    def __init__(self, model, batch_size, clipping_threshold=2, tiled_dlatent=False, model_res=1024, randomize_noise=False):
         self.batch_size = batch_size
         self.tiled_dlatent=tiled_dlatent
         self.model_scale = int(2*(math.log(model_res,2)-1)) # For example, 1024 -> 18
 
         if tiled_dlatent:
-            self.initial_dlatents = np.zeros((self.batch_size, 512))  if init_dlatent is None else np.tile(init_dlatent[None,:,:],(self.batch_size,1,1))
+            self.initial_dlatents = np.zeros((self.batch_size, 512))
             model.components.synthesis.run(np.zeros((self.batch_size, self.model_scale, 512)),
                 randomize_noise=randomize_noise, minibatch_size=self.batch_size,
                 custom_inputs=[partial(create_variable_for_generator, batch_size=batch_size, tiled_dlatent=True),
                                                 partial(create_stub, batch_size=batch_size)],
                 structure='fixed')
         else:
-            # TODO: test me
-            self.initial_dlatents = np.zeros((self.batch_size, self.model_scale, 512))  if init_dlatent is None else np.tile(init_dlatent[None,:,:],(self.batch_size,self.model_scale,1))
+            self.initial_dlatents = np.zeros((self.batch_size, self.model_scale, 512))
             model.components.synthesis.run(self.initial_dlatents,
                 randomize_noise=randomize_noise, minibatch_size=self.batch_size,
                 custom_inputs=[partial(create_variable_for_generator, batch_size=batch_size, tiled_dlatent=False, model_scale=self.model_scale),

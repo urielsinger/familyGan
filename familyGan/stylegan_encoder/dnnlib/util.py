@@ -26,7 +26,7 @@ import glob
 import uuid
 
 from distutils.util import strtobool
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Tuple, Union, Optional
 
 
 # Util classes
@@ -73,7 +73,7 @@ class Logger(object):
 
     def write(self, text: str) -> None:
         """Write text to stdout (and a file) and optionally flush."""
-        if len(text) == 0: # workaround for a bug in VSCode debugger: sys.stdout.write(''); sys.stdout.flush() => crash
+        if len(text) == 0:  # workaround for a bug in VSCode debugger: sys.stdout.write(''); sys.stdout.flush() => crash
             return
 
         if self.file is not None:
@@ -207,8 +207,8 @@ def get_module_from_obj_name(obj_name: str) -> Tuple[types.ModuleType, str]:
     # try each alternative in turn
     for module_name, local_obj_name in name_pairs:
         try:
-            module = importlib.import_module(module_name) # may raise ImportError
-            get_obj_from_module(module, local_obj_name) # may raise AttributeError
+            module = importlib.import_module(module_name)  # may raise ImportError
+            get_obj_from_module(module, local_obj_name)
             return module, local_obj_name
         except:
             pass
@@ -216,7 +216,7 @@ def get_module_from_obj_name(obj_name: str) -> Tuple[types.ModuleType, str]:
     # maybe some of the modules themselves contain errors?
     for module_name, _local_obj_name in name_pairs:
         try:
-            importlib.import_module(module_name) # may raise ImportError
+            importlib.import_module(module_name)  # may raise ImportError
         except ImportError:
             if not str(sys.exc_info()[1]).startswith("No module named '" + module_name + "'"):
                 raise
@@ -342,10 +342,10 @@ def is_url(obj: Any) -> bool:
     return True
 
 
-def open_url(url: str, cache_dir: str = None, num_attempts: int = 10, verbose: bool = True) -> Any:
-    """Download the given URL and return a binary-mode file object to access the data."""
+def open_url_n_cache(url: str, cache_dir: str = None, num_attempts: int = 10, verbose: bool = True) -> Tuple[Optional[str], Optional[Any]]:
+    """Download a given url or load it from cache and return filepath"""
     if not is_url(url) and os.path.isfile(url):
-        return open(url, 'rb')
+        return url, open(url, 'rb')
 
     assert is_url(url)
     assert num_attempts >= 1
@@ -355,7 +355,7 @@ def open_url(url: str, cache_dir: str = None, num_attempts: int = 10, verbose: b
     if cache_dir is not None:
         cache_files = glob.glob(os.path.join(cache_dir, url_md5 + "_*"))
         if len(cache_files) == 1:
-            return open(cache_files[0], "rb")
+            return cache_files[0], open(cache_files[0], "rb")
 
     # Download.
     url_name = None
@@ -395,6 +395,7 @@ def open_url(url: str, cache_dir: str = None, num_attempts: int = 10, verbose: b
                     print(".", end="", flush=True)
 
     # Save to cache.
+    cache_file = None
     if cache_dir is not None:
         safe_name = re.sub(r"[^0-9a-zA-Z-._]", "_", url_name)
         cache_file = os.path.join(cache_dir, url_md5 + "_" + safe_name)
@@ -402,7 +403,14 @@ def open_url(url: str, cache_dir: str = None, num_attempts: int = 10, verbose: b
         os.makedirs(cache_dir, exist_ok=True)
         with open(temp_file, "wb") as f:
             f.write(url_data)
-        os.replace(temp_file, cache_file) # atomic
+        os.replace(temp_file, cache_file)  # atomic
 
     # Return data as file object.
-    return io.BytesIO(url_data)
+        return cache_file, io.BytesIO(url_data)
+
+def open_url(url: str, cache_dir: str = None, num_attempts: int = 10, verbose: bool = True) -> Any:
+    """Download the given URL and return a binary-mode file object to access the data."""
+
+    cache_dir, f = open_url_n_cache(url, cache_dir, num_attempts, verbose)
+    # Return data as file object.
+    return f

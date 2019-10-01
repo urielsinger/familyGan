@@ -1,30 +1,44 @@
+import argparse
 from os.path import join as pjoin
 import os
 from PIL import Image
-from familyGan.pipeline import align_image, image2latent, latent2image, image_list2latent, latent_list2image_list
-import time
 
+from config import URL_PRETRAINED_RESNET,PerceptParam
+from familyGan.pipeline import align_image, image2latent, latent2image, image_list2latent_old, latent_list2image_list
+import time
+from keras.applications.resnet50 import preprocess_input
+from keras.models import load_model
 from familyGan.stylegan_encoder.training.misc import load_pkl, save_pkl
+from familyGan.stylegan_encoder import dnnlib
+from familyGan.stylegan_encoder.encoder.perceptual_model import load_images
 
 ITER = 450
 LR = 2.  # not used ATM, uses on in perceptual_model.py
-EXPERIMENT_NAME = f"adam_iter_{ITER}_lr_{LR}"
-IM_PATH = "../data/toy_face.jpg"
-IM2_PATH = "../data/toy_face2.jpg"
+EXPERIMENT_NAME = f"resnet_notincluded_iter_{ITER}_lr_{LR}"
+DATA_PATH = "../data"
 RESULTS_PATH = "../results"
+IM_PATH = pjoin(DATA_PATH, "toy_face.jpg")
+IM2_PATH = pjoin(DATA_PATH, "toy_face2.jpg")
 DLATENTS_CACHE = pjoin(RESULTS_PATH, "cache/dlatents")
 VGG_EMBED_CACHE = pjoin(RESULTS_PATH, "cache/vgg_embeddings")
+MODEL_CACHE = "../familyGan/cache"
+RESNET_IMAGE_SIZE = 256
 
-def run_single_image():
-    im = Image.open(IM_PATH)
+def run_single_image(perc_param=None):
 
     #  image2latent -
-    im_aligned = align_image(im)
-    init_dlatent = load_pkl(pjoin(DLATENTS_CACHE,f"toy_image_dlatent.pkl"))
+    # TODO: replace with pre-trained efficientnet for higher speed (use train_effnet.py)
+
+    # predict initial dlatents with ResNet model
+    resnet_path, __ = dnnlib.util.open_url_n_cache(URL_PRETRAINED_RESNET,cache_dir=MODEL_CACHE)
+    ff_model = load_model(resnet_path)
+    # init_dlatent = ff_model.predict(preprocess_input(np.array(im_aligned)))
+    imgs = load_images([IM_PATH], image_size=RESNET_IMAGE_SIZE, align=True)
+    init_dlatent = ff_model.predict(preprocess_input(imgs))
 
     start = time.time()
     print(f"started im2lat")
-    _, aligned_latent = image2latent(im_aligned, iterations=ITER, learning_rate=LR, init_dlatent = None)
+    _, aligned_latent = image2latent(imgs, iterations=ITER, init_dlatents = init_dlatent, perc_param=perc_param)
     end = time.time()
     print(f"took {end - start} sec")
 
@@ -41,12 +55,10 @@ def run_2_images():
     #  image2latent -
     im_aligned = align_image(im)
     im2_aligned = align_image(im2)
-    init_dlatent = load_pkl(pjoin(DLATENTS_CACHE, f"toy_image_dlatent.pkl"))
 
     start = time.time()
     print(f"started im2lat")
-    _, aligned_latent_list = image_list2latent([im_aligned, im2_aligned], iterations=ITER, learning_rate=LR,
-                                               init_dlatent=None)  # init_dlatent)
+    _, aligned_latent_list = image_list2latent_old([im_aligned, im2_aligned], iterations=ITER, learning_rate=LR)
     end = time.time()
     print(f"took {end - start} sec")
 
@@ -60,6 +72,28 @@ def run_2_images():
 
 
 if __name__ == '__main__':
+    os.makedirs(RESULTS_PATH, exist_ok=True)
+    os.makedirs(DATA_PATH, exist_ok=True)
+    os.makedirs(DLATENTS_CACHE, exist_ok=True)
+    os.makedirs(MODEL_CACHE, exist_ok=True)
+
+    perc_param = PerceptParam(lr=0.02
+                              , decay_rate=0.9
+                              , decay_steps=10
+                              , image_size=256
+                              , use_vgg_layer=9  # use_vgg_layer
+                              , use_vgg_loss=0.4  # use_vgg_loss
+                              , face_mask=False  # face_mask
+                              , use_grabcut=True
+                              , scale_mask=1.5
+                              , mask_dir='masks'
+                              , use_pixel_loss=1.5
+                              , use_mssim_loss=100
+                              , use_lpips_loss=100
+                              , use_l1_penalty=1)
+
+    perc_param.decay_steps *= 0.01 * ITER # precent from total iter
+
     # for i in range(1):
     #     run_2_images()
-    run_single_image()
+    run_single_image(perc_param)
