@@ -9,14 +9,6 @@
 
 #----------------------------------------------------------------------------
 # Paths.
-import os
-import pickle
-# from . import dnnlib
-# from .dnnlib import tflib as tflib
-# from familyGan.stylegan_encoder import dnnlib
-# from familyGan.stylegan_encoder.dnnlib import tflib
-
-import sys
 
 result_dir = 'results'
 data_dir = 'datasets'
