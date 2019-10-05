@@ -14,19 +14,17 @@ from familyGan.stylegan_encoder.encoder.AdaBound import AdaBoundOptimizer
 from stylegan_encoder.ffhq_dataset.face_alignment import image_align_from_image
 import familyGan.config as confing
 
-def load_images(images_list, image_size:int=256, align:bool=False):
+def load_images(images_list, image_size:int=256, align:bool=True):
     loaded_images = list()
-    for img_path in images_list:
-      img = PIL.Image.open(img_path).convert('RGB').resize((image_size,image_size),PIL.Image.LANCZOS)
+    for im in images_list:
+      img = PIL.Image.open(im).convert('RGB').resize((image_size,image_size),PIL.Image.LANCZOS) if not isinstance(im,PIL.Image.Image) else im
       if align:
           face_landmarks = confing.landmarks_detector.get_landmarks_from_image(np.array(img))
           img = image_align_from_image(img, face_landmarks, output_size=image_size)
       img = np.array(img)
       img = np.expand_dims(img, 0)
       loaded_images.append(img)
-    loaded_images = np.vstack(loaded_images)
-    preprocessed_images = preprocess_input(loaded_images)
-    return preprocessed_images
+    return np.vstack(loaded_images)
 
 def tf_custom_l1_loss(img1,img2):
   return tf.math.reduce_mean(tf.math.abs(img2-img1), axis=None)
@@ -183,15 +181,22 @@ class PerceptualModel:
                 mask = np.where((mask==2)|(mask==0),0,1)
             return mask
 
-    def set_reference_images(self, images_list):
-        assert(len(images_list) != 0 and len(images_list) <= self.batch_size)
-        loaded_image = load_images(images_list, self.img_size)
+    def set_reference_images(self, images_list, is_aligned: bool = False):
+        if not isinstance(images_list, np.ndarray):
+            num_images = len(images_list)
+            loaded_image = load_images(images_list, self.img_size, align=not is_aligned)
+        else:
+            num_images = images_list.shape[0]
+            loaded_image = images_list
+
+        assert (num_images != 0 and num_images <= self.batch_size)
         image_features = None
         if self.perceptual_model is not None:
             image_features = self.perceptual_model.predict_on_batch(preprocess_input(loaded_image))
             weight_mask = np.ones(self.features_weight.shape)
 
         if self.face_mask:
+            raise NotImplementedError("images are injected as array nut PIL")
             image_mask = np.zeros(self.ref_weight.shape)
             for (i, im) in enumerate(loaded_image):
                 try:
@@ -220,19 +225,19 @@ class PerceptualModel:
         else:
             image_mask = np.ones(self.ref_weight.shape)
 
-        if len(images_list) != self.batch_size:
+        if num_images != self.batch_size:
             if image_features is not None:
                 features_space = list(self.features_weight.shape[1:])
-                existing_features_shape = [len(images_list)] + features_space
-                empty_features_shape = [self.batch_size - len(images_list)] + features_space
+                existing_features_shape = [num_images] + features_space
+                empty_features_shape = [self.batch_size - num_images] + features_space
                 existing_examples = np.ones(shape=existing_features_shape)
                 empty_examples = np.zeros(shape=empty_features_shape)
                 weight_mask = np.vstack([existing_examples, empty_examples])
                 image_features = np.vstack([image_features, np.zeros(empty_features_shape)])
 
             images_space = list(self.ref_weight.shape[1:])
-            existing_images_space = [len(images_list)] + images_space
-            empty_images_space = [self.batch_size - len(images_list)] + images_space
+            existing_images_space = [num_images] + images_space
+            empty_images_space = [self.batch_size - num_images] + images_space
             existing_images = np.ones(shape=existing_images_space)
             empty_images = np.zeros(shape=empty_images_space)
             image_mask = image_mask * np.vstack([existing_images, empty_images])
@@ -260,7 +265,7 @@ class PerceptualModel:
             _, loss, lr = self.sess.run(fetch_ops)
             if last_loss is not None and abs(last_loss - loss) < delta:
                 no_change_counter += 1
-                if no_change_counter > stop_count and loss < 0.6:
+                if no_change_counter > stop_count or loss < 0.6:
                     print("early stopping")
                     break
             else:
