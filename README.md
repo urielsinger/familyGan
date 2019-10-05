@@ -1,10 +1,9 @@
 # familyGan
 
 status:
-- [ ] benchmarking stylegan_plus
- - [ ] ResNet
+- Benchmarking stylegan_plus
+ - [X] ResNet
  - [ ] VGG16 perceptual model 
-  - [ ] loss
 - [ ] Serve resnet and/or stylegan_encoder in different standalone processes
 
 some references:
