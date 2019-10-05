@@ -1,7 +1,8 @@
 # familyGan
 
 status:
-- Benchmarking stylegan_plus
+- [X] Stochastic clipping and best latent
+- [ ] Benchmarking stylegan_plus
  - [X] ResNet
  - [ ] VGG16 perceptual model 
 - [ ] Serve resnet and/or stylegan_encoder in different standalone processes
