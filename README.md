@@ -1,5 +1,12 @@
 # familyGan
 
+status:
+- [ ] benchmarking stylegan_plus
+ - [ ] ResNet
+ - [ ] VGG16 perceptual model 
+  - [ ] loss
+- [ ] Serve resnet and/or stylegan_encoder in different standalone processes
+
 some references:
 - [Conditional GAN blog](https://medium.com/towards-artificial-intelligence/face-aging-using-conditional-gans-an-introduction-to-age-cgans-machine-learning-8a4a6a100201)
 - [ChildGAN that didn't end up well](https://github.com/mingu600/childGAN)
@@ -13,3 +20,11 @@ Datasets:
 
 Code:
 - [stylegan-encoder](https://github.com/spiorf/stylegan-encoder)
+
+## StyleGan Benchmarking
+| description                                    | timing [sec]|  iter  |
+|------------------------------------------------|-------------|--------|
+| init version (hackaton)                        |    299      |  750   |
+| + Adam + lr 2.0 + early stopping               |    71.6     |   91   |
+| + oracle init dlatent(start from final dlatent)|    48.68    |   42   |
+|    + resnet init dlatent                       |    73.8     |   74   |
