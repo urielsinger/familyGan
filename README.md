@@ -21,9 +21,21 @@ Code:
 - [stylegan-encoder](https://github.com/spiorf/stylegan-encoder)
 
 ## StyleGan Benchmarking
-| description                                    | timing [sec]|  iter  |
-|------------------------------------------------|-------------|--------|
-| init version (hackaton)                        |    299      |  750   |
-| + Adam + lr 2.0 + early stopping               |    71.6     |   91   |
-| + oracle init dlatent(start from final dlatent)|    48.68    |   42   |
-|    + resnet init dlatent                       |    73.8     |   74   |
+
+on toydata 1 (Mandelblit) loss < 0.6
+
+| description                                     | timing [sec]|  iter  |
+|-------------------------------------------------|-------------|--------|
+| init version (hackaton)                         |    299      |  750   |
+| + Adam + lr 2.0 + early stopping                |    71.6     |   91   |
+| + oracle init dlatent (start from final dlatent)|    48.68    |   42   |
+|    + resnet init dlatent                        |    73.8     |   74   |
+
+on toydata 2 (Bibi) loss < 0.6
+
+| description                                     | timing [sec]|  iter  |
+|-------------------------------------------------|-------------|--------|
+| init version (hackaton)                         |    ???      |  ???   |
+| init + Adam + lr 2.0 + early stopping           |    70.82    |   95   |
+| + oracle init dlatent (start from final dlatent)|    46.55    |   26   |
+|    + resnet init dlatent                        |    102.6    |   176  |
