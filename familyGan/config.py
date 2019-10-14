@@ -32,7 +32,7 @@ synthesis_kwargs = dict(output_transform=dict(func=tflib.convert_images_to_uint8
 generator, Gs_network = None, None
 
 PerceptParam = namedtuple('PerceptParam', ['image_size', 'decay_rate', 'decay_steps'
-    , 'face_mask', 'use_grabcut', 'scale_mask', 'mask_dir', 'use_pixel_loss'
+    , 'face_mask', 'use_grabcut', 'scale_mask', 'mask_dir', 'use_pixel_loss', 'use_l2_vgg_loss'
     , 'use_mssim_loss', 'use_lpips_loss', 'use_l1_penalty','use_vgg_layer','use_vgg_loss','lr'])
 
 DEFAULT_PERC_PARAM = PerceptParam(lr=0.02
@@ -40,15 +40,17 @@ DEFAULT_PERC_PARAM = PerceptParam(lr=0.02
                               , decay_steps=10 # precent from total iter
                               , image_size=256
                               , use_vgg_layer=9  # use_vgg_layer
+                              , use_l2_vgg_loss = 0
                               , use_vgg_loss=0.4  # use_vgg_loss
+                              , use_pixel_loss=1.5
+                              , use_mssim_loss=100
+                              , use_lpips_loss=100
+                              , use_l1_penalty=1
                               , face_mask=False  # face_mask
                               , use_grabcut=True
                               , scale_mask=1.5
                               , mask_dir='masks'
-                              , use_pixel_loss=1.5
-                              , use_mssim_loss=100
-                              , use_lpips_loss=100
-                              , use_l1_penalty=1)
+                              )
 
 def init_generator(batch_size=1):
     global generator, Gs_network

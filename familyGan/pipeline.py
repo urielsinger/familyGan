@@ -106,7 +106,7 @@ def image2latent(img_list, iterations=750, init_dlatents: Optional[np.ndarray] =
             generator.set_dlatents(init_dlatents)
 
         op = perceptual_model.optimize(generator.dlatent_variable, iterations=iterations)
-        pbar = tqdm(op, leave=False, total=iterations)
+        pbar = tqdm(op, position=0, leave=True, total=iterations)
         best_loss = None
         best_dlatent = None
         for loss_dict in pbar:

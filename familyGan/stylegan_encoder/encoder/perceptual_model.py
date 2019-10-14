@@ -54,6 +54,9 @@ class PerceptualModel:
         self.use_grabcut = args.use_grabcut
         self.scale_mask = args.scale_mask
         self.mask_dir = args.mask_dir
+        self.l2_vgg_loss = args.use_l2_vgg_loss
+        if (self.l2_vgg_loss <= self.epsilon):
+            self.l2_vgg_loss = None
         if (self.layer <= 0 or self.vgg_loss <= self.epsilon):
             self.vgg_loss = None
         self.pixel_loss = args.use_pixel_loss
@@ -136,6 +139,10 @@ class PerceptualModel:
             self.add_placeholder("features_weight")
 
         self.loss = 0
+        # Original L2 loss on VGG16 features
+        if (self.l2_vgg_loss is not None):
+            self.loss += self.l2_vgg_loss * tf.compat.v1.losses.mean_squared_error(self.features_weight * self.ref_img_features,
+                                         self.features_weight * generated_img_features) / 82890.0
         # L1 loss on VGG16 features
         if (self.vgg_loss is not None):
             self.loss += self.vgg_loss * tf_custom_l1_loss(self.features_weight * self.ref_img_features, self.features_weight * generated_img_features)
@@ -251,7 +258,9 @@ class PerceptualModel:
 
     def optimize(self, vars_to_optimize, iterations=200):
         vars_to_optimize = vars_to_optimize if isinstance(vars_to_optimize, list) else [vars_to_optimize]
-        optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+        optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate,beta1=0.5,
+                                           beta2=0.5,
+                                           epsilon=1e-8,)
         min_op = optimizer.minimize(self.loss, var_list=[vars_to_optimize])
         self.sess.run(tf.variables_initializer(optimizer.variables()))
         self.sess.run(self._reset_global_step)
@@ -259,13 +268,13 @@ class PerceptualModel:
 
         last_loss = None
         no_change_counter = 0
-        delta = 0.1
+        delta = 1
         stop_count = 20
         for _ in range(iterations):
             _, loss, lr = self.sess.run(fetch_ops)
             if last_loss is not None and abs(last_loss - loss) < delta:
                 no_change_counter += 1
-                if no_change_counter > stop_count or loss < 0.6:
+                if no_change_counter > stop_count:
                     print("early stopping")
                     break
             else:
@@ -312,7 +321,7 @@ class PerceptualModelOld:
                                                    dtype='float32', initializer=tf.initializers.zeros())
         self.sess.run([self.features_weight.initializer, self.features_weight.initializer])
 
-        self.loss = tf.losses.mean_squared_error(self.features_weight * self.ref_img_features,
+        self.loss = tf.compat.v1.losses.mean_squared_error(self.features_weight * self.ref_img_features,
                                                  self.features_weight * generated_img_features) / 82890.0
 
     def set_reference_images(self, images_list):
