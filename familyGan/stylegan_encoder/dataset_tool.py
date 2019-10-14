@@ -18,9 +18,9 @@ import traceback
 import numpy as np
 import tensorflow as tf
 import PIL.Image
-import dnnlib.tflib as tflib
+import familyGan.stylegan_encoder.dnnlib.tflib as tflib
 
-from training import dataset
+from familyGan.stylegan_encoder.training import dataset
 
 #----------------------------------------------------------------------------
 
@@ -72,10 +72,10 @@ class TFRecordExporter:
             assert self.shape[0] in [1, 3]
             assert self.shape[1] == self.shape[2]
             assert self.shape[1] == 2**self.resolution_log2
-            tfr_opt = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.NONE)
+            tfr_opt = tf.io.TFRecordOptions(compression_type=None, input_buffer_size=16777216, output_buffer_size=104857600)
             for lod in range(self.resolution_log2 - 1):
                 tfr_file = self.tfr_prefix + '-r%02d.tfrecords' % (self.resolution_log2 - lod)
-                self.tfr_writers.append(tf.python_io.TFRecordWriter(tfr_file, tfr_opt))
+                self.tfr_writers.append(tf.io.TFRecordWriter(tfr_file, tfr_opt))
         assert img.shape == self.shape
         for lod, tfr_writer in enumerate(self.tfr_writers):
             if lod:
@@ -94,6 +94,11 @@ class TFRecordExporter:
         assert labels.shape[0] == self.cur_images
         with open(self.tfr_prefix + '-rxx.labels', 'wb') as f:
             np.save(f, labels.astype(np.float32))
+
+    def add_sentence_embedding(self, embeddings):
+        # save as -rxx.labels for easy compatibility with rest of codebase.
+        with open(self.tfr_prefix + '-rxx.labels', 'wb') as f:
+            np.save(f, embeddings.astype(np.float32))
 
     def __enter__(self):
         return self
@@ -497,19 +502,249 @@ def create_celeba(tfrecord_dir, celeba_dir, cx=89, cy=121):
             img = img[cy - 64 : cy + 64, cx - 64 : cx + 64]
             img = img.transpose(2, 0, 1) # HWC => CHW
             tfr.add_image(img)
+#----------------------------------------------------------------------------
+
+def create_celebaHQ(tfrecord_dir, celeba_dir, delta_dir, num_threads=4, num_tasks=100, conditioning='none'):
+    print('Loading CelebA from "%s"' % celeba_dir)
+    expected_images = 202599
+
+    if len(glob.glob(os.path.join(celeba_dir, 'Img/img_celeba', '*.jpg'))) != expected_images:
+        error('Expected to find %d images' % expected_images)
+
+    with open(os.path.join(celeba_dir, 'Anno', 'list_landmarks_celeba.txt'), 'rt') as file:
+        landmarks = [[float(value) for value in line.split()[1:]] for line in file.readlines()[2:]]
+        landmarks = np.float32(landmarks).reshape(-1, 5, 2)
+
+    if conditioning == 'binary':
+        print('Loading binary attributes')
+        with open(os.path.join(celeba_dir, 'Anno', 'list_attr_celeba.txt'), 'rt') as f:
+            # Load binary attributes
+            attributes = np.array([[float(x) if float(x) == 1.0 else 0.0 for x in l.split()[1:]] for l in f.readlines()[2:]], dtype=np.float32)
+
+    elif conditioning == 'textual':
+        print('Loading textual descriptions')
+            # Load textual descriptions
+            # TODO: how to handle multiple descriptions???
+        raise NotImplementedError
+
+    print('Loading CelebA-HQ deltas from "%s"' % delta_dir)
+    import scipy.ndimage
+    import hashlib
+    import bz2
+    import zipfile
+    import base64
+    import cryptography.hazmat.primitives.hashes
+    import cryptography.hazmat.backends
+    import cryptography.hazmat.primitives.kdf.pbkdf2
+    import cryptography.fernet
+    expected_zips = 30
+
+    if len(glob.glob(os.path.join(delta_dir, 'delta*.zip'))) != expected_zips:
+        error('Expected to find %d zips' % expected_zips)
+
+    with open(os.path.join(delta_dir, 'image_list.txt'), 'rt') as file:
+        lines = [line.split() for line in file]
+        fields = dict()
+        for idx, field in enumerate(lines[0]):
+            type = int if field.endswith('idx') else str
+            fields[field] = [type(line[idx]) for line in lines[1:]]
+    indices = np.array(fields['idx'])
+
+    # Must use pillow version 3.1.1 for everything to work correctly.
+    if getattr(PIL, 'PILLOW_VERSION', '') != '3.1.1':
+        error('create_celebahq requires pillow version 3.1.1') # conda install pillow=3.1.1
+
+    # Must use libjpeg version 8d for everything to work correctly.
+    img = np.array(PIL.Image.open(os.path.join(celeba_dir, 'Img/img_celeba', '000001.jpg')))
+    md5 = hashlib.md5()
+    md5.update(img.tobytes())
+    if md5.hexdigest() != '9cad8178d6cb0196b36f7b34bc5eb6d3':
+        error('create_celebahq requires libjpeg version 8d') # conda install jpeg=8d
+
+    def rot90(v):
+        return np.array([-v[1], v[0]])
+
+    def process_func(idx):
+        # Load original image.
+        orig_idx = fields['orig_idx'][idx]
+        orig_file = fields['orig_file'][idx]
+        orig_path = os.path.join(celeba_dir, 'img_celeba', orig_file)
+        img = PIL.Image.open(orig_path)
+
+        # Choose oriented crop rectangle.
+        lm = landmarks[orig_idx]
+        eye_avg = (lm[0] + lm[1]) * 0.5 + 0.5
+        mouth_avg = (lm[3] + lm[4]) * 0.5 + 0.5
+        eye_to_eye = lm[1] - lm[0]
+        eye_to_mouth = mouth_avg - eye_avg
+        x = eye_to_eye - rot90(eye_to_mouth)
+        x /= np.hypot(*x)
+        x *= max(np.hypot(*eye_to_eye) * 2.0, np.hypot(*eye_to_mouth) * 1.8)
+        y = rot90(x)
+        c = eye_avg + eye_to_mouth * 0.1
+        quad = np.stack([c - x - y, c - x + y, c + x + y, c + x - y])
+        zoom = 1024 / (np.hypot(*x) * 2)
+
+        # Shrink.
+        shrink = int(np.floor(0.5 / zoom))
+        if shrink > 1:
+            size = (int(np.round(float(img.size[0]) / shrink)), int(np.round(float(img.size[1]) / shrink)))
+            img = img.resize(size, PIL.Image.ANTIALIAS)
+            quad /= shrink
+            zoom *= shrink
+
+        # Crop.
+        border = max(int(np.round(1024 * 0.1 / zoom)), 3)
+        crop = (int(np.floor(min(quad[:,0]))), int(np.floor(min(quad[:,1]))), int(np.ceil(max(quad[:,0]))), int(np.ceil(max(quad[:,1]))))
+        crop = (max(crop[0] - border, 0), max(crop[1] - border, 0), min(crop[2] + border, img.size[0]), min(crop[3] + border, img.size[1]))
+        if crop[2] - crop[0] < img.size[0] or crop[3] - crop[1] < img.size[1]:
+            img = img.crop(crop)
+            quad -= crop[0:2]
+
+        # Simulate super-resolution.
+        superres = int(np.exp2(np.ceil(np.log2(zoom))))
+        if superres > 1:
+            img = img.resize((img.size[0] * superres, img.size[1] * superres), PIL.Image.ANTIALIAS)
+            quad *= superres
+            zoom /= superres
+
+        # Pad.
+        pad = (int(np.floor(min(quad[:,0]))), int(np.floor(min(quad[:,1]))), int(np.ceil(max(quad[:,0]))), int(np.ceil(max(quad[:,1]))))
+        pad = (max(-pad[0] + border, 0), max(-pad[1] + border, 0), max(pad[2] - img.size[0] + border, 0), max(pad[3] - img.size[1] + border, 0))
+        if max(pad) > border - 4:
+            pad = np.maximum(pad, int(np.round(1024 * 0.3 / zoom)))
+            img = np.pad(np.float32(img), ((pad[1], pad[3]), (pad[0], pad[2]), (0, 0)), 'reflect')
+            h, w, _ = img.shape
+            y, x, _ = np.mgrid[:h, :w, :1]
+            mask = 1.0 - np.minimum(np.minimum(np.float32(x) / pad[0], np.float32(y) / pad[1]), np.minimum(np.float32(w-1-x) / pad[2], np.float32(h-1-y) / pad[3]))
+            blur = 1024 * 0.02 / zoom
+            img += (scipy.ndimage.gaussian_filter(img, [blur, blur, 0]) - img) * np.clip(mask * 3.0 + 1.0, 0.0, 1.0)
+            img += (np.median(img, axis=(0,1)) - img) * np.clip(mask, 0.0, 1.0)
+            img = PIL.Image.fromarray(np.uint8(np.clip(np.round(img), 0, 255)), 'RGB')
+            quad += pad[0:2]
+
+        # Transform.
+        img = img.transform((4096, 4096), PIL.Image.QUAD, (quad + 0.5).flatten(), PIL.Image.BILINEAR)
+        img = img.resize((1024, 1024), PIL.Image.ANTIALIAS)
+        img = np.asarray(img).transpose(2, 0, 1)
+
+        # Verify MD5.
+        md5 = hashlib.md5()
+        md5.update(img.tobytes())
+        assert md5.hexdigest() == fields['proc_md5'][idx]
+
+        # Load delta image and original JPG.
+        with zipfile.ZipFile(os.path.join(delta_dir, 'deltas%05d.zip' % (idx - idx % 1000)), 'r') as zip:
+            delta_bytes = zip.read('delta%05d.dat' % idx)
+        with open(orig_path, 'rb') as file:
+            orig_bytes = file.read()
+
+        # Decrypt delta image, using original JPG data as decryption key.
+        algorithm = cryptography.hazmat.primitives.hashes.SHA256()
+        backend = cryptography.hazmat.backends.default_backend()
+        salt = bytes(orig_file, 'ascii')
+        kdf = cryptography.hazmat.primitives.kdf.pbkdf2.PBKDF2HMAC(algorithm=algorithm, length=32, salt=salt, iterations=100000, backend=backend)
+        key = base64.urlsafe_b64encode(kdf.derive(orig_bytes))
+        delta = np.frombuffer(bz2.decompress(cryptography.fernet.Fernet(key).decrypt(delta_bytes)), dtype=np.uint8).reshape(3, 1024, 1024)
+
+        # Apply delta image.
+        img = img + delta
+
+        # Verify MD5.
+        md5 = hashlib.md5()
+        md5.update(img.tobytes())
+        assert md5.hexdigest() == fields['final_md5'][idx]
+        return img
+
+
+    print('Saving')
+    quit()
+
+
+    with TFRecordExporter(tfrecord_dir, indices.size) as tfr:
+        order = tfr.choose_shuffled_order()
+        with ThreadPool(num_threads) as pool:
+            for img in pool.process_items_concurrently(indices[order].tolist(), process_func=process_func, max_items_in_flight=num_tasks):
+                tfr.add_image(img)
+
+            if conditioning == 'binary':
+                tfr.add_labels(attributes[order])
+
+            elif conditioning == 'textual':
+                tfr.add_text_description()
+
+    # TODO: test (i.e., load some images and check their attributes. Does it match?)
+
+
+
+
+
+
+
+
 
 #----------------------------------------------------------------------------
 
-def create_from_images(tfrecord_dir, image_dir, shuffle):
+def create_CUB(tfrecord_dir, CUB_dir):
+    # Include tags and features (?)
+    raise NotImplementedError
+
+
+#----------------------------------------------------------------------------
+
+def create_coco(tfrecord_dir, coco_dir, res=256, type='test'):
+    import json
+    import pickle
+
+    tfrecord_dir = tfrecord_dir+'_{}'.format(type)
+    # annotations = json.load(open(os.path.join(coco_dir, 'annotations/instances_train2014.json')))
+
+    filenames = np.load(os.path.join(coco_dir, '{}_filenames.npy'.format(type)))
+    embeddings = np.load(os.path.join(coco_dir, '{}_caption_features.npy'.format(type)))
+
+    fns = []
+
+    assert len(filenames) == len(embeddings)
+
+    with TFRecordExporter(tfrecord_dir, len(embeddings)) as tfr:
+        for i, fn in enumerate(filenames):
+
+            # img = PIL.Image.open(os.path.join(coco_dir,'{}2014'.format(type),filenames[i][0]))
+            # img = np.asarray(img.resize((res, res)))
+            #
+            # channels = img.shape[2] if img.ndim == 3 else 1
+            #
+            # if channels == 1:
+            #     new_img = np.zeros((3, img.shape[0], img.shape[1]))
+            #     new_img[0], new_img[1], new_img[2] = img, img, img
+            #     img = new_img
+            #
+            # else:
+            #     img = img.transpose([2, 0, 1]) # HWC => CHW
+
+            # tfr.add_image(img)
+
+            # Save filenames (can be used with index)
+            fns.append(fn[0][fn[0].rindex('/')+1:])
+
+        # Add all embeddings
+        tfr.add_sentence_embedding(embeddings.astype(np.float32))
+        np.save(open('fns.npy', 'wb'), fns)
+
+#----------------------------------------------------------------------------
+
+def create_from_images(tfrecord_dir, image_dir, shuffle, resolution=512, max_images=4000000000):
     print('Loading images from "%s"' % image_dir)
     image_filenames = sorted(glob.glob(os.path.join(image_dir, '*')))
     if len(image_filenames) == 0:
         error('No input images found')
 
-    img = np.asarray(PIL.Image.open(image_filenames[0]))
-    resolution = img.shape[0]
+    image = PIL.Image.open(image_filenames[0])
+    img = np.asarray(image)
+    res = img.shape[0]
+        
     channels = img.shape[2] if img.ndim == 3 else 1
-    if img.shape[1] != resolution:
+    if img.shape[1] != res:
         error('Input images must have the same width and height')
     if resolution != 2 ** int(np.floor(np.log2(resolution))):
         error('Input image resolution must be a power-of-two')
@@ -519,12 +754,20 @@ def create_from_images(tfrecord_dir, image_dir, shuffle):
     with TFRecordExporter(tfrecord_dir, len(image_filenames)) as tfr:
         order = tfr.choose_shuffled_order() if shuffle else np.arange(len(image_filenames))
         for idx in range(order.size):
-            img = np.asarray(PIL.Image.open(image_filenames[order[idx]]))
-            if channels == 1:
-                img = img[np.newaxis, :, :] # HW => CHW
-            else:
-                img = img.transpose([2, 0, 1]) # HWC => CHW
-            tfr.add_image(img)
+            try:
+                img = PIL.Image.open(image_filenames[order[idx]])
+                if (res != resolution):
+                    img = img.resize((resolution,resolution))
+                img = np.asarray(img)
+                if channels == 1:
+                    img = img[np.newaxis, :, :] # HW => CHW
+                else:
+                    img = img.transpose([2, 0, 1]) # HWC => CHW
+                tfr.add_image(img)
+            except:
+                print("Exception in " + image_filenames[order[idx]])
+            if (tfr.cur_images >= max_images):
+                break
 
 #----------------------------------------------------------------------------
 
@@ -620,11 +863,30 @@ def execute_cmdline(argv):
     p.add_argument(     '--cx',             help='Center X coordinate (default: 89)', type=int, default=89)
     p.add_argument(     '--cy',             help='Center Y coordinate (default: 121)', type=int, default=121)
 
+    p = add_command(    'create_celebaHQ',  'Create dataset for CelebA-HQ',
+                                            'create_celebahq datasets/celeba ~/downloads/celebahq')
+    p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
+    p.add_argument(     'celeba_dir',       help='Directory containing CelebA')
+    p.add_argument(     'delta_dir',        help='Directory containing CelebA-HQ deltas')
+    # p.add_argument(     'num_threads',      help='Number of threads to use (default: 4)', type=int, default=4)
+    # p.add_argument(     'num_tasks',        help='Number of tasks to perform in parallel (default: 100)', type=int, default=100)
+    p.add_argument(     'conditioning',     help='Type of conditioning (default: "none")', type=str, default='none')
+
+    # p = add_command(    'create_CUB',       'Create dataset for CUB birds',
+    #                                         'create_CUB datasets/CUB ~/downloads/CUB')
+
+    p = add_command(    'create_coco',      'Create dataset for MSCOCO',
+                                            'create_COCO datasets/coco ~/downloads/coco')
+    p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
+    p.add_argument(     'coco_dir',         help='Directory containing MSCOCO')
+
     p = add_command(    'create_from_images', 'Create dataset from a directory full of images.',
                                             'create_from_images datasets/mydataset myimagedir')
     p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
     p.add_argument(     'image_dir',        help='Directory containing the images')
     p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
+    p.add_argument(     '--resolution',     help='Output resolution (default: 512)', type=int, default=512)
+    p.add_argument(     '--max_images',     help='Maximum number of images (default: none)', type=int, default=4000000000)
 
     p = add_command(    'create_from_hdf5', 'Create dataset from legacy HDF5 archive.',
                                             'create_from_hdf5 datasets/celebahq ~/downloads/celeba-hq-1024x1024.h5')

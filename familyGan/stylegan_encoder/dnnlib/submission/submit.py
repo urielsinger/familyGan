@@ -233,7 +233,7 @@ def run_wrapper(submit_config: SubmitConfig) -> None:
     else:  # when running in a cluster, redirect stderr to stdout, and just force flushing (log writing is handled by run.sh)
         logger = util.Logger(file_name=None, should_flush=True)
 
-    import dnnlib
+    import familyGan.stylegan_encoder.dnnlib as dnnlib
     dnnlib.submit_config = submit_config
 
     try:

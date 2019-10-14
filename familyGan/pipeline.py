@@ -8,57 +8,122 @@ import numpy as np
 from PIL import Image
 import pickle
 
+from config import URL_VGG_16
 from familyGan import config
+import familyGan.stylegan_encoder.config as stylgan_config
+import familyGan.stylegan_encoder.dnnlib as dnnlib
 from familyGan.models.simple_avarage import SimpleAverageModel
 from familyGan.multiproc_util import parmap
 from familyGan.stylegan_encoder.encoder.generator_model import Generator
-from familyGan.stylegan_encoder.encoder.perceptual_model import PerceptualModel
+from familyGan.stylegan_encoder.encoder.perceptual_model import PerceptualModel, PerceptualModelOld
 from familyGan.stylegan_encoder.ffhq_dataset.face_alignment import image_align_from_image
+from stylegan_encoder.encode_images import split_to_batches
 
 os.environ['TF_ENABLE_AUTO_MIXED_PRECISION'] = '1'
 from auto_tqdm import tqdm
 
-
 coef = -1.5
 
 
-def align_image(img):
+def align_image(img, imsize: int = 256):
     face_landmarks = config.landmarks_detector.get_landmarks_from_image(np.array(img))
     aligned_img = image_align_from_image(img, face_landmarks)
-    return aligned_img.resize((256, 256))
+    return aligned_img.resize((imsize, imsize))
 
 
-def image2latent(img, iterations=750, learning_rate=1.,
-                 init_dlatent: Optional[np.ndarray] = None) -> Tuple[np.ndarray, np.ndarray]:
-    generated_img_list, latent_list = image_list2latent([img, img], iterations, learning_rate, init_dlatent)
+def image2latent_old(img, iterations=750, learning_rate=1., init_dlatents: Optional[np.ndarray] = None) -> Tuple[
+    np.ndarray, np.ndarray]:
+    generated_img_list, latent_list = image_list2latent_old([img, img], iterations, learning_rate, init_dlatents)
 
     return generated_img_list[0], latent_list[0]
 
 
-def image_list2latent(img_list, iterations=750, learning_rate=1.,
-                      init_dlatent: Optional[np.ndarray] = None) -> Tuple[np.ndarray, np.ndarray]:
+def image_list2latent_old(img_list, iterations=750, learning_rate=1.
+                          , init_dlatents: Optional[np.ndarray] = None
+                          , return_image: bool = False) -> Tuple[Optional[np.ndarray], np.ndarray]:
     """
     :return: sizes of (batch_size, img_height, img_width, 3), (batch_size, 18, 512)
     """
     batch_size = len(img_list)
-    config.init_generator(init_dlatent=init_dlatent, batch_size=batch_size)
+    config.init_generator(batch_size=batch_size)
     # generator = config.generator  # TODO: messes with parallel
     generator = Generator(config.Gs_network, batch_size=batch_size)
     generator.reset_dlatents()
-    perceptual_model = PerceptualModel(256, batch_size=batch_size)
+    perceptual_model = PerceptualModelOld(256, batch_size=batch_size)
     perceptual_model.build_perceptual_model(generator.generated_image)
 
     perceptual_model.set_reference_images_from_image(np.array([np.array(im) for im in img_list]))
+    if init_dlatents is not None:
+        generator.set_dlatents(init_dlatents)
     op = perceptual_model.optimize(generator.dlatent_variable, iterations=iterations, learning_rate=learning_rate)
+    best_loss = None
+    best_dlatent = None
     with tqdm(total=iterations) as pbar:
         for iteration, loss in enumerate(op):
             pbar.set_description('Loss: %.2f' % loss)
+            if best_loss is None or loss < best_loss:
+                best_loss = loss
+                best_dlatent = generator.get_dlatents()
+            generator.stochastic_clip_dlatents()
             pbar.update()
     print(f"final loss {loss}")
-    generated_img_list = generator.generate_images()
-    latent_list = generator.get_dlatents()
+    generator.set_dlatents(best_dlatent)
 
-    return generated_img_list, latent_list
+    if return_image:
+        return generator.generate_images(), generator.get_dlatents()
+
+    return None, generator.get_dlatents()
+
+
+def image2latent(img_list, iterations=750, init_dlatents: Optional[np.ndarray] = None, args=None
+                 , return_image: bool = False, is_aligned:bool=False) \
+        -> Tuple[List[Optional[np.ndarray]], List[np.ndarray]]:
+    """
+    :return: sizes of (batch_size, img_height, img_width, 3), (batch_size, 18, 512)
+    """
+    batch_size = len(img_list)
+    args = config.DEFAULT_PERC_PARAM if args is None else args
+    config.init_generator(batch_size=batch_size)
+    # generator = config.generator  # TODO: messes with parallel
+    generator = Generator(config.Gs_network, batch_size=batch_size)
+    generator.reset_dlatents()
+
+    perc_model = None
+    if (args.use_lpips_loss > 0.00000001):
+        with dnnlib.util.open_url(URL_VGG_16, cache_dir=stylgan_config.cache_dir) as f:
+            perc_model = pickle.load(f)
+    perceptual_model = PerceptualModel(args, perc_model=perc_model, batch_size=batch_size)
+    perceptual_model.build_perceptual_model(generator)
+    generated_images_list, generated_dlatents_list = [], []
+
+    for images_batch in tqdm(split_to_batches(img_list, batch_size), total=len(img_list) // batch_size):
+        names = [f"image_{n}" for n in range(len(images_batch))]
+        # names = [os.path.splitext(os.path.basename(x))[0] for x in images_batch]
+        perceptual_model.set_reference_images(images_batch, is_aligned=is_aligned)
+
+        # FIXME: split also init_dlatents to batches
+        if init_dlatents is not None:
+            generator.set_dlatents(init_dlatents)
+
+        op = perceptual_model.optimize(generator.dlatent_variable, iterations=iterations)
+        pbar = tqdm(op, position=0, leave=True, total=iterations)
+        best_loss = None
+        best_dlatent = None
+        for loss_dict in pbar:
+            pbar.set_description(" ".join(names) + ": " + "; ".join(["{} {:.4f}".format(k, v)
+                                                                     for k, v in loss_dict.items()]))
+            if best_loss is None or loss_dict["loss"] < best_loss:
+                best_loss = loss_dict["loss"]
+                best_dlatent = generator.get_dlatents()
+            generator.stochastic_clip_dlatents()
+
+        print(" ".join(names), " Loss {:.4f}".format(best_loss))
+        generator.set_dlatents(best_dlatent)
+
+        generated_images_list = [generator.generate_images() if return_image else None]
+        generated_dlatents_list += [generator.get_dlatents()]
+
+    return generated_images_list, generated_dlatents_list
 
 
 def predict(father_latent, mother_latent):
@@ -75,7 +140,8 @@ def latent2image(latent: np.ndarray) -> Image.Image:
 
 def latent_list2image_list(latent_arr: np.ndarray) -> List[Image.Image]:
     batch_size = len(latent_arr)
-    config.init_generator(batch_size=batch_size)
+    # if config.generator is None:
+    #     config.init_generator(batch_size=batch_size)
     config.generator.set_dlatents(latent_arr)
     img_arrays = config.generator.generate_images()
     img_list = [Image.fromarray(im, 'RGB').resize((256, 256)) for im in img_arrays]
@@ -112,7 +178,8 @@ def full_pipe(father, mother):
     if father_latent is None and mother_latent is None:
         father_aligned = align_image(father)
         mother_aligned = align_image(mother)
-        father_latent, mother_latent = list(parmap(parallel_tolatent, list(enumerate([father_aligned, mother_aligned]))))
+        father_latent, mother_latent = list(
+            parmap(parallel_tolatent, list(enumerate([father_aligned, mother_aligned]))))
     elif father_latent is not None and mother_latent is None:
         mother_aligned = align_image(mother)
         mother_latent = list(parmap(parallel_tolatent, list(enumerate([mother_aligned]))))[0]

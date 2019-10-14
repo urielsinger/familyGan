@@ -4,7 +4,7 @@ import os
 import PIL.Image
 
 
-def image_align(src_file, dst_file, face_landmarks, output_size=1024, transform_size=4096, enable_padding=True):
+def image_align(src_file, dst_file, face_landmarks, output_size=1024, transform_size=4096, enable_padding=True, x_scale=1, y_scale=1, em_scale=0.1, alpha=False):
         # Align function from FFHQ dataset pre-processing step
         # https://github.com/NVlabs/ffhq-dataset/blob/master/download_ffhq.py
 
@@ -33,8 +33,9 @@ def image_align(src_file, dst_file, face_landmarks, output_size=1024, transform_
         x = eye_to_eye - np.flipud(eye_to_mouth) * [-1, 1]
         x /= np.hypot(*x)
         x *= max(np.hypot(*eye_to_eye) * 2.0, np.hypot(*eye_to_mouth) * 1.8)
-        y = np.flipud(x) * [-1, 1]
-        c = eye_avg + eye_to_mouth * 0.1
+        x *= x_scale
+        y = np.flipud(x) * [-y_scale, y_scale]
+        c = eye_avg + eye_to_mouth * em_scale
         quad = np.stack([c - x - y, c - x + y, c + x + y, c + x - y])
         qsize = np.hypot(*x) * 2
 
@@ -72,7 +73,14 @@ def image_align(src_file, dst_file, face_landmarks, output_size=1024, transform_
             blur = qsize * 0.02
             img += (scipy.ndimage.gaussian_filter(img, [blur, blur, 0]) - img) * np.clip(mask * 3.0 + 1.0, 0.0, 1.0)
             img += (np.median(img, axis=(0,1)) - img) * np.clip(mask, 0.0, 1.0)
-            img = PIL.Image.fromarray(np.uint8(np.clip(np.rint(img), 0, 255)), 'RGB')
+            img = np.uint8(np.clip(np.rint(img), 0, 255))
+            if alpha:
+                mask = 1-np.clip(3.0 * mask, 0.0, 1.0)
+                mask = np.uint8(np.clip(np.rint(mask*255), 0, 255))
+                img = np.concatenate((img, mask), axis=2)
+                img = PIL.Image.fromarray(img, 'RGBA')
+            else:
+                img = PIL.Image.fromarray(img, 'RGB')
             quad += pad[:2]
 
         # Transform.
