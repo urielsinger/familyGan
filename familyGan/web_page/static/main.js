@@ -13,10 +13,6 @@ $( document ).ready(function() {
 
     $(".overlay").css("display","none");
 
-    if(window.location.href.endsWith(".png")){
-        $('.image--cover').attr('src', "get_image/"+window.location.href.split("/")[3]).hide().fadeIn(1000);
-    }
-
     $("#imageUpload1").change(function() {
         readURL(this,"imagePreview1");
     });
@@ -25,7 +21,7 @@ $( document ).ready(function() {
     });
 
     $("#uploadBtn").click(function() {
-        var data=new FormData()
+          var data=new FormData()
           data.append('image1',$("#imageUpload1")[0].files[0])
           data.append('image2',$("#imageUpload2")[0].files[0])
 
@@ -47,4 +43,5 @@ $( document ).ready(function() {
               }
       })
     });
+
 });

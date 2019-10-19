@@ -105,7 +105,6 @@ moustache_direction = np.load('{}/moustache_direction.npy'.format(direction_path
 sideburns_direction = np.load('{}/sideburns_direction.npy'.format(direction_path))
 
 all_directions = np.stack([gender_direction,
-                           gender_direction,
                            headPose_yaw_direction,
                            headPose_roll_direction,
                            # headPose_pitch_directio

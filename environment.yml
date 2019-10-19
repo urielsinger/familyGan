@@ -39,9 +39,9 @@ dependencies:
     - nbclean
     - imageio
     - tqdm
-    - tb-nightly  # for tensorboard
     - tensorflow-gpu
     - keras
     - dlib
     - pathos  # for running parallel map
     - auto_tqdm
+    - flask

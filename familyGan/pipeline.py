@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image
 import pickle
 
-from config import URL_VGG_16
+from familyGan.config import URL_VGG_16
 from familyGan import config
 import familyGan.stylegan_encoder.config as stylgan_config
 import familyGan.stylegan_encoder.dnnlib as dnnlib
@@ -17,7 +17,7 @@ from familyGan.multiproc_util import parmap
 from familyGan.stylegan_encoder.encoder.generator_model import Generator
 from familyGan.stylegan_encoder.encoder.perceptual_model import PerceptualModel, PerceptualModelOld
 from familyGan.stylegan_encoder.ffhq_dataset.face_alignment import image_align_from_image
-from stylegan_encoder.encode_images import split_to_batches
+from familyGan.stylegan_encoder.encode_images import split_to_batches
 
 os.environ['TF_ENABLE_AUTO_MIXED_PRECISION'] = '1'
 from auto_tqdm import tqdm
@@ -31,51 +31,27 @@ def align_image(img, imsize: int = 256):
     return aligned_img.resize((imsize, imsize))
 
 
-def image2latent_old(img, iterations=750, learning_rate=1., init_dlatents: Optional[np.ndarray] = None) -> Tuple[
-    np.ndarray, np.ndarray]:
-    generated_img_list, latent_list = image_list2latent_old([img, img], iterations, learning_rate, init_dlatents)
-
-    return generated_img_list[0], latent_list[0]
-
-
-def image_list2latent_old(img_list, iterations=750, learning_rate=1.
-                          , init_dlatents: Optional[np.ndarray] = None
-                          , return_image: bool = False) -> Tuple[Optional[np.ndarray], np.ndarray]:
-    """
-    :return: sizes of (batch_size, img_height, img_width, 3), (batch_size, 18, 512)
-    """
-    batch_size = len(img_list)
-    config.init_generator(batch_size=batch_size)
-    # generator = config.generator  # TODO: messes with parallel
-    generator = Generator(config.Gs_network, batch_size=batch_size)
-    generator.reset_dlatents()
-    perceptual_model = PerceptualModelOld(256, batch_size=batch_size)
+def image2latent_old(img, iterations=1250, learning_rate=1., init_dlatent:Optional[np.ndarray]=None):
+    config.init_generator()
+    generator = Generator(config.Gs_network, 1)
+    perceptual_model = PerceptualModelOld(256)
     perceptual_model.build_perceptual_model(generator.generated_image)
 
-    perceptual_model.set_reference_images_from_image(np.array([np.array(im) for im in img_list]))
-    if init_dlatents is not None:
-        generator.set_dlatents(init_dlatents)
-    op = perceptual_model.optimize(generator.dlatent_variable, iterations=iterations, learning_rate=learning_rate)
-    best_loss = None
-    best_dlatent = None
+    perceptual_model.set_reference_images_from_image(np.array([np.array(img)]))
+    op = perceptual_model.optimize(generator.dlatent_variable, iterations=iterations)
     with tqdm(total=iterations) as pbar:
         for iteration, loss in enumerate(op):
             pbar.set_description('Loss: %.2f' % loss)
-            if best_loss is None or loss < best_loss:
-                best_loss = loss
-                best_dlatent = generator.get_dlatents()
-            generator.stochastic_clip_dlatents()
             pbar.update()
+
     print(f"final loss {loss}")
-    generator.set_dlatents(best_dlatent)
+    generated_img = generator.generate_images()[0]
+    latent = generator.get_dlatents()[0]
 
-    if return_image:
-        return generator.generate_images(), generator.get_dlatents()
-
-    return None, generator.get_dlatents()
+    return generated_img, latent
 
 
-def image2latent(img_list, iterations=750, init_dlatents: Optional[np.ndarray] = None, args=None
+def image2latent(img_list, iterations=1250, init_dlatents: Optional[np.ndarray] = None, args=None
                  , return_image: bool = False, is_aligned:bool=False) \
         -> Tuple[List[Optional[np.ndarray]], List[np.ndarray]]:
     """
@@ -126,16 +102,20 @@ def image2latent(img_list, iterations=750, init_dlatents: Optional[np.ndarray] =
     return generated_images_list, generated_dlatents_list
 
 
-def predict(father_latent, mother_latent):
-    model = SimpleAverageModel(coef=coef)
+def predict(father_latent, mother_latent, **kwargs):
+    model = SimpleAverageModel(**kwargs)
     child_latent = model.predict([father_latent], [mother_latent])
 
     return child_latent
 
 
 def latent2image(latent: np.ndarray) -> Image.Image:
-    latent = np.array([latent, latent])
-    return latent_list2image_list(latent)[0]
+    config.init_generator()
+    latent = latent.reshape((1, 18, 512))
+    config.generator.set_dlatents(latent)
+    img_array = config.generator.generate_images()[0]
+    img = Image.fromarray(img_array, 'RGB')
+    return img.resize((256, 256))
 
 
 def latent_list2image_list(latent_arr: np.ndarray) -> List[Image.Image]:
@@ -148,7 +128,7 @@ def latent_list2image_list(latent_arr: np.ndarray) -> List[Image.Image]:
     return img_list
 
 
-def full_pipe(father, mother):
+def full_pipe(father, mother, **kwargs):
     father_latent, mother_latent = None, None
     father_hash = hash(tuple(np.array(father).flatten()))
     mother_hash = hash(tuple(np.array(mother).flatten()))
@@ -171,7 +151,7 @@ def full_pipe(father, mother):
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
         os.environ["CUDA_VISIBLE_DEVICES"] = str(i)
         # config.Gs_network
-        _, aligned_latent = image2latent(aligned_image)
+        _, aligned_latent = image2latent_old(aligned_image)
         return aligned_latent
 
     print("starting latent extraction")
@@ -186,9 +166,11 @@ def full_pipe(father, mother):
     elif father_latent is None and mother_latent is not None:
         father_aligned = align_image(father)
         father_latent = list(parmap(parallel_tolatent, list(enumerate([father_aligned]))))[0]
+    # father_aligned = align_image(father)
+    # mother_aligned = align_image(mother)
+    # _, father_latent = image2latent_old(father_aligned)
+    # _, mother_latent = image2latent_old(mother_aligned)
     print("end latent extraction")
-    # _, father_latent = image2latent(father_aligned)
-    # _, mother_latent = image2latent(mother_aligned)
 
     # cache
     image2latent_cache[father_hash] = father_latent
@@ -197,15 +179,16 @@ def full_pipe(father, mother):
         pickle.dump(image2latent_cache, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     # model
-    child_latent = predict(father_latent, mother_latent)[0]  # to 18,512
+    child_latent = predict(father_latent, mother_latent, **kwargs)
+    with open(cache_path, 'wb') as handle:
+        pickle.dump(image2latent_cache, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     # to image
     child = latent2image(child_latent)
 
-    return child
+    return child, child_latent
 
-
-def integrate_with_web(path_father, path_mother):
+def integrate_with_web_get_child(path_father, path_mother):
     def randomString(stringLength=10):
         """Generate a random string of fixed length """
         letters = string.ascii_lowercase
@@ -214,9 +197,41 @@ def integrate_with_web(path_father, path_mother):
     father = Image.open(path_father)
     mother = Image.open(path_mother)
 
-    child = full_pipe(father, mother)
+    kwargs = {'age_coef': 0, 'gender_coef': 0}
+    child_image, child_latent = full_pipe(father, mother, **kwargs)
 
-    parent_path = os.path.dirname(path_father)
+    parent_path = os.path.dirname(os.path.dirname(path_father))
+    random_string = randomString(30)
+    child_image_path = join(parent_path, 'generated_files', random_string + '.png')
+    child_latent_path = join(parent_path, 'generated_files', random_string + '.npy')
+    child_image.save(child_image_path)
+    np.save(child_latent_path, child_latent)
+
+    return random_string + '.png'
+
+def latent_play(latent_vector, **coeffs):
+    new_latent_vector = latent_vector.copy()
+
+    for direction_type, coeff in coeffs.items():
+        try:
+            new_latent_vector[:8] = (new_latent_vector + coeff * eval(f'config.{direction_type}_direction'))[:8]
+        except:
+            print(f'no such direction {direction_type}')
+
+    return new_latent_vector
+
+def integrate_with_web_get_generated_child(child_latent_path, **kwargs):
+    def randomString(stringLength=10):
+        """Generate a random string of fixed length """
+        letters = string.ascii_lowercase
+        return ''.join(random.choice(letters) for _ in range(stringLength))
+
+    child_latent = np.load(child_latent_path)
+
+    new_child_latent = latent_play(child_latent, **kwargs)
+    child = latent2image(new_child_latent)
+
+    parent_path = os.path.dirname(child_latent_path)
     random_string = randomString(30)
     child_path = join(parent_path, random_string + '.png')
     child.save(child_path)

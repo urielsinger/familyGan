@@ -1,13 +1,16 @@
 from flask import *
 import base64
 import os
-from familyGan.pipeline import integrate_with_web
+from familyGan.pipeline import integrate_with_web_get_child, integrate_with_web_get_generated_child
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'upload_files'
+CHILD_FOLDER = 'generated_files'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['CHILD_FOLDER'] = CHILD_FOLDER
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 def get_base64_image(path):
     encoded_string = ""
@@ -36,6 +39,11 @@ def get_image(img_name):
     if img_name and allowed_file(img_name):
         return send_file(os.path.join(app.config['UPLOAD_FOLDER'], img_name), mimetype='image/png')
 
+@app.route('/get_child_image/<img_name>')
+def get_child_image(img_name):
+    if img_name and allowed_file(img_name):
+        return send_file(os.path.join(app.config['CHILD_FOLDER'], img_name), mimetype='image/png')
+
 @app.route('/get_image_base64/<img_name>')
 def get_image_base64(img_name):
     if img_name and allowed_file(img_name):
@@ -49,17 +57,34 @@ def upload_file():
         image1 = request.files['image1']
         image2 = request.files['image2']
         if image1 and allowed_file(image1.filename) and image2 and allowed_file(image2.filename):
-            father_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),app.config['UPLOAD_FOLDER'], image1.filename)
-            mother_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),app.config['UPLOAD_FOLDER'], image2.filename)
+            father_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'], image1.filename)
+            mother_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'], image2.filename)
 
             image1.save(father_path)
             image2.save(mother_path)
 
-            child_image_name = integrate_with_web(father_path,mother_path)
+            child_image_name = integrate_with_web_get_child(father_path, mother_path)
 
             return child_image_name
         else:
             return 'File not allowed'
+    return False
+
+@app.route('/generate', methods=['GET', 'POST'])
+def generate_child():
+    if request.method == 'POST':
+
+        kwargs = dict(request.form)
+
+        child_latent_path = kwargs.pop('child_path')[:-3] + 'npy'
+        child_latent_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['CHILD_FOLDER'], child_latent_path)
+
+        kwargs = {k: float(v) for k, v in kwargs.items() if float(v) != 0}
+
+        child_image_name = integrate_with_web_get_generated_child(child_latent_path, **kwargs)
+
+        return child_image_name
+
     return False
 
 if __name__ == "__main__":
