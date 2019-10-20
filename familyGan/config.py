@@ -59,6 +59,9 @@ def init_generator(batch_size=1):
 
 
 def get_generator(batch_size=1):
+    global generator, Gs_network
+    if generator is not None:
+        return generator, Gs_network
     tiled_dlatent, randomize_noise = False, False
     clipping_threshold = 2
     dlatent_avg = ''

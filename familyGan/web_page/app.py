@@ -1,6 +1,8 @@
 from flask import *
 import base64
 import os
+from datetime import datetime, timedelta
+from math import ceil
 from familyGan.pipeline import integrate_with_web_get_child, integrate_with_web_get_generated_child
 app = Flask(__name__)
 
@@ -53,22 +55,40 @@ def get_image_base64(img_name):
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
-    if request.method == 'POST':
-        image1 = request.files['image1']
-        image2 = request.files['image2']
-        if image1 and allowed_file(image1.filename) and image2 and allowed_file(image2.filename):
-            father_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'], image1.filename)
-            mother_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'], image2.filename)
+    def generate():
+        if request.method == 'POST':
+            image1 = request.files['image1']
+            image2 = request.files['image2']
+            if image1 and allowed_file(image1.filename) and image2 and allowed_file(image2.filename):
+                father_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'], image1.filename)
+                mother_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), app.config['UPLOAD_FOLDER'], image2.filename)
 
-            image1.save(father_path)
-            image2.save(mother_path)
+                image1.save(father_path)
+                image2.save(mother_path)
 
-            child_image_name = integrate_with_web_get_child(father_path, mother_path)
+                gen = integrate_with_web_get_child(father_path, mother_path)
+                last_time = datetime.now()
+                child_image_name = next(gen)
+                while isinstance(child_image_name, float):
 
-            return child_image_name
+                    cur_time = datetime.now()
+                    delta = cur_time - last_time
+                    pred_time = 'Inf'
+                    if child_image_name > 0:
+                        pred_time = timedelta(seconds=ceil(delta.total_seconds()/child_image_name))
+                    delta = timedelta(seconds=ceil(delta.total_seconds()))
+                    percent = round(100*child_image_name, 2)
+                    yield {'width': str(percent),
+                           'time_passed': delta.__str__(),
+                           'time_estimation': pred_time.__str__()}.__str__().replace('\'',"\"")
+                    child_image_name = next(gen)
+
+                yield child_image_name
+            else:
+                yield 'File not allowed'
         else:
-            return 'File not allowed'
-    return False
+            yield False
+    return Response(stream_with_context(generate()))
 
 @app.route('/generate', methods=['GET', 'POST'])
 def generate_child():

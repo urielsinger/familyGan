@@ -21,9 +21,9 @@ $( document ).ready(function() {
     });
 
     $("#uploadBtn").click(function() {
-          var data=new FormData()
-          data.append('image1',$("#imageUpload1")[0].files[0])
-          data.append('image2',$("#imageUpload2")[0].files[0])
+          var data=new FormData();
+          data.append('image1',$("#imageUpload1")[0].files[0]);
+          data.append('image2',$("#imageUpload2")[0].files[0]);
 
           $(".overlay").css("display","block");
           $.ajax({
@@ -38,10 +38,33 @@ $( document ).ready(function() {
                   console.log("upload error")
               },
               success:function(data){
-                  console.log(data)
-                  location.href = data;
-              }
+                  // data = data.substring(lastResponseLength);
+                  // console.log(data);
+                  // location.href = data;
+              },
+              xhrFields: {
+                // Getting on progress streaming response
+                    onprogress: function(e)
+                    {
+                        var progressResponse;
+                        var response = e.currentTarget.response;
+                        progressResponse = response.substring(response.lastIndexOf("{"));
+
+                        if(progressResponse.endsWith(".png")){
+                            progressResponse = progressResponse.substring(progressResponse.lastIndexOf("}")+1);
+                            console.log(progressResponse);
+                            location.href = progressResponse;
+                        }
+                        else{
+                            progressResponse = progressResponse.substring(0,progressResponse.lastIndexOf("}")+1);
+                            console.log(progressResponse);
+                            var elem = document.getElementById("myBar");
+                            var res = JSON.parse(progressResponse);
+                            elem.style.width = res.width + "%";
+                            elem.innerHTML = res.width + "%  |  " + res.time_passed +'<'+res.time_estimation;
+                        }
+                    }
+                }
+            });
       })
     });
-
-});

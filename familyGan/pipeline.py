@@ -22,8 +22,6 @@ from familyGan.stylegan_encoder.encode_images import split_to_batches
 os.environ['TF_ENABLE_AUTO_MIXED_PRECISION'] = '1'
 from auto_tqdm import tqdm
 
-coef = -1.5
-
 
 def align_image(img, imsize: int = 256):
     face_landmarks = config.landmarks_detector.get_landmarks_from_image(np.array(img))
@@ -32,7 +30,8 @@ def align_image(img, imsize: int = 256):
 
 
 def image2latent_old(img, iterations=1250, learning_rate=1., init_dlatent:Optional[np.ndarray]=None):
-    config.init_generator()
+    if config.generator is None:
+        config.init_generator()
     generator = Generator(config.Gs_network, 1)
     perceptual_model = PerceptualModelOld(256)
     perceptual_model.build_perceptual_model(generator.generated_image)
@@ -43,12 +42,13 @@ def image2latent_old(img, iterations=1250, learning_rate=1., init_dlatent:Option
         for iteration, loss in enumerate(op):
             pbar.set_description('Loss: %.2f' % loss)
             pbar.update()
+            yield None, iteration/iterations
 
     print(f"final loss {loss}")
     generated_img = generator.generate_images()[0]
     latent = generator.get_dlatents()[0]
 
-    return generated_img, latent
+    yield generated_img, latent
 
 
 def image2latent(img_list, iterations=1250, init_dlatents: Optional[np.ndarray] = None, args=None
@@ -155,21 +155,34 @@ def full_pipe(father, mother, **kwargs):
         return aligned_latent
 
     print("starting latent extraction")
-    if father_latent is None and mother_latent is None:
+    # if father_latent is None and mother_latent is None:
+    #     father_aligned = align_image(father)
+    #     mother_aligned = align_image(mother)
+    #     father_latent, mother_latent = list(
+    #         parmap(parallel_tolatent, list(enumerate([father_aligned, mother_aligned]))))
+    # elif father_latent is not None and mother_latent is None:
+    #     mother_aligned = align_image(mother)
+    #     mother_latent = list(parmap(parallel_tolatent, list(enumerate([mother_aligned]))))[0]
+    # elif father_latent is None and mother_latent is not None:
+    #     father_aligned = align_image(father)
+    #     father_latent = list(parmap(parallel_tolatent, list(enumerate([father_aligned]))))[0]
+    number_of_runs = 1*(father_latent is None) + 1*(mother_latent is None)
+    if father_latent is None:
         father_aligned = align_image(father)
+        gen = image2latent_old(father_aligned)
+        _, father_latent = next(gen)
+        while isinstance(father_latent, float):
+            yield father_latent/number_of_runs, None
+            _, father_latent = next(gen)
+    yield 0.5, None
+    if mother_latent is None:
         mother_aligned = align_image(mother)
-        father_latent, mother_latent = list(
-            parmap(parallel_tolatent, list(enumerate([father_aligned, mother_aligned]))))
-    elif father_latent is not None and mother_latent is None:
-        mother_aligned = align_image(mother)
-        mother_latent = list(parmap(parallel_tolatent, list(enumerate([mother_aligned]))))[0]
-    elif father_latent is None and mother_latent is not None:
-        father_aligned = align_image(father)
-        father_latent = list(parmap(parallel_tolatent, list(enumerate([father_aligned]))))[0]
-    # father_aligned = align_image(father)
-    # mother_aligned = align_image(mother)
-    # _, father_latent = image2latent_old(father_aligned)
-    # _, mother_latent = image2latent_old(mother_aligned)
+        gen = image2latent_old(mother_aligned)
+        _, mother_latent = next(gen)
+        while isinstance(mother_latent, float):
+            yield (number_of_runs-1)/2 + mother_latent/number_of_runs, None
+            _, mother_latent = next(gen)
+    yield 0.9999, None
     print("end latent extraction")
 
     # cache
@@ -186,7 +199,8 @@ def full_pipe(father, mother, **kwargs):
     # to image
     child = latent2image(child_latent)
 
-    return child, child_latent
+    yield 1.0, None
+    yield child, child_latent
 
 def integrate_with_web_get_child(path_father, path_mother):
     def randomString(stringLength=10):
@@ -198,7 +212,12 @@ def integrate_with_web_get_child(path_father, path_mother):
     mother = Image.open(path_mother)
 
     kwargs = {'age_coef': 0, 'gender_coef': 0}
-    child_image, child_latent = full_pipe(father, mother, **kwargs)
+
+    gen = full_pipe(father, mother, **kwargs)
+    child_image, child_latent = next(gen)
+    while isinstance(child_image, float):
+        yield child_image
+        child_image, child_latent = next(gen)
 
     parent_path = os.path.dirname(os.path.dirname(path_father))
     random_string = randomString(30)
@@ -207,7 +226,7 @@ def integrate_with_web_get_child(path_father, path_mother):
     child_image.save(child_image_path)
     np.save(child_latent_path, child_latent)
 
-    return random_string + '.png'
+    yield random_string + '.png'
 
 def latent_play(latent_vector, **coeffs):
     new_latent_vector = latent_vector.copy()
